@@ -122,32 +122,15 @@ export const Stream = () => {
   const handleEndStream = async () => {
     suspendStream?.();
     setStreamName('');
-    try {
-      await updateProfile({
-        UpdaterPublicKeyBase58Check: currentUser.PublicKeyBase58Check,
-        ProfilePublicKeyBase58Check: '',
-        NewUsername: '',
-        MinFeeRateNanosPerKB: 1000,
-        NewCreatorBasisPoints: 100,
-        NewDescription: '',
-        NewStakeMultipleBasisPoints: 12500,
-        ExtraData: {
-          WavesStreamPlaybackId: '',
-          WavesStreamTitle: '',
-        },
-      });
-    } catch (error) {
-      console.log('something happened: ' + error);
-    }
   };
   
   const { mutate: recordStream } = useUpdateStream({
     streamId,
     record: true,
   });
+
   const handleEnableRecording = async () => {
     recordStream?.();
-   
   };
   const [isRecordingEnabled, setIsRecordingEnabled] = useState(false);
 
@@ -591,12 +574,7 @@ export const Stream = () => {
                     title={stream?.name} playbackId={stream?.playbackId} muted />
                   </Group>
 
-                  <Space h="md" />
-                  <Group justify="center">
-                    <Button fullWidth color="red" radius="xl" onClick={handleEndStream}>
-                      End Wave
-                    </Button>
-                  </Group>
+                  
                 </>
               ) : (
                 <Group justify="center">
@@ -730,12 +708,7 @@ export const Stream = () => {
                     <Broadcast title={stream?.name} streamKey={stream.streamKey} muted />
                   </Group>
 
-                  <Space h="md" />
-                  <Group justify="center">
-                    <Button fullWidth color="red" radius="xl" onClick={handleEndStream}>
-                      End Wave
-                    </Button>
-                  </Group>
+                 
                 </>
               ) : (
                 <Group justify="center">

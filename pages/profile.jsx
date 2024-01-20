@@ -33,40 +33,26 @@ import {
   identity,
 } from "deso-protocol";
 import { Stream } from "../components/Stream/Stream";
-import { IconSettings } from "@tabler/icons-react";
 import { useDisclosure } from "@mantine/hooks";
 import classes from './wave/wave.module.css';
 import Post from "@/components/Post";
 import { Chat } from '@/components/Chat';
+import { UpdateProfile } from "../components/UpdateProfile";
 
 export default function ProfilePage () {
 
-  const [opened, { open, close }] = useDisclosure(false);
   const { currentUser } = useContext(DeSoIdentityContext);
+  console.log(currentUser)
   const [profile, setProfile] = useState([]);
   const [posts, setPosts] = useState([]);
   const [NFTs, setNFTs] = useState([]);
   const [followerInfo, setFollowers] = useState({ followers: 0, following: 0 });
   const userPublicKey = currentUser?.PublicKeyBase58Check;
-  const [newUsername, setNewUsername] = useState("");
-  const [errorMessage, setErrorMessage] = useState("");
-  const [isButtonDisabled, setIsButtonDisabled] = useState(true);
   const [isLoadingPosts, setIsLoadingPosts] = useState(false);
   const [isLoadingNFTs, setIsLoadingNFTs] = useState(false);
   const [openedChat, { toggle }] = useDisclosure(true);
 
-  const getProfile = async () => {
-    try {
-      const profileData = await getSingleProfile({
-        PublicKeyBase58Check: userPublicKey,
-      });
 
-
-      setProfile(profileData);
-    } catch (error) {
-      console.error("Error fetching user profile:", error);
-    }
-  }
 
   const getFollowers = async () => {
     try {
@@ -120,32 +106,13 @@ export default function ProfilePage () {
 
   useEffect(() => {
     if (currentUser) {
-      getProfile();
       getFollowers();
       getPosts();
       getNFTs();
     }
   }, [currentUser]);
 
-  const handleUpdateUsername = async () => {
-    try {
-      await updateProfile({
-        UpdaterPublicKeyBase58Check: currentUser.PublicKeyBase58Check,
-        ProfilePublicKeyBase58Check: "",
-        NewUsername: newUsername,
-        MinFeeRateNanosPerKB: 1000,
-        NewCreatorBasisPoints: 100,
-        NewDescription: "",
-        NewStakeMultipleBasisPoints: 12500,
-      });
-    } catch (error) {
-      console.log("something happened: " + error);
-    }
 
-    window.location.reload();
-  };
-
-  
   const replaceURLs = (text) => {
     const urlRegex = /(https?:\/\/[^\s]+)/g;
     const atSymbolRegex = /@(\w+)/g; 
@@ -157,81 +124,7 @@ export default function ProfilePage () {
 
   return (
     <>
-      <Modal 
-      centered
-      opened={opened} 
-      onClose={close} 
-      title= { 
-           <Text
-              fw={666}
-              size="xl"
-              variant="gradient"
-              gradient={{ from: "indigo", to: "cyan", deg: 45 }}
-            >
-              Update Profile
-            </Text>
-        }
-        >
-        <Paper m="md" shadow="lg" radius="sm" p="xl" withBorder>
-          
-          <Group justify="center" grow>
-            <TextInput
-              type="text"
-              label="Username"
-              value={newUsername}
-              placeholder="New username"
-              onChange={async (e) => {
-                setNewUsername(e.target.value);
-                e.preventDefault();
-
-                let regex = /^[a-zA-Z0-9_]*$/;
-                if (!regex.test(e.target.value)) {
-                  setErrorMessage("Username cannot contain special characters");
-                  setIsButtonDisabled(true);
-                } else {
-                  setErrorMessage("");
-
-                  try {
-                    const request = {
-                      PublicKeyBase58Check: "",
-                      Username: e.target.value,
-                      NoErrorOnMissing: true,
-                    };
-
-                    try {
-                      const userFound = await getSingleProfile(request);
-
-                      if (userFound === null) {
-                        setErrorMessage("");
-                        setIsButtonDisabled(false);
-                      } else {
-                        setErrorMessage("Username is not available");
-                        setIsButtonDisabled(true);
-                      }
-                    } catch (error) {
-                      setIsButtonDisabled(true);
-                      setErrorMessage("");
-                    }
-                  } catch (error) {
-                    console.log(error);
-                  }
-                }
-              }}
-              error={errorMessage}
-            />
-          </Group>
-
-
-          <Space h="sm" />
-
-          <Group justify="right">
-            <Button disabled={isButtonDisabled} onClick={handleUpdateUsername}>
-              Update
-            </Button>
-          </Group>
-        </Paper>
-      </Modal>
-
+     
       <Divider
         my="xs"
         label={
@@ -251,7 +144,7 @@ export default function ProfilePage () {
           <Card shadow="sm" padding="lg" radius="md" withBorder>
             <Card.Section>
               <Image
-                src={profile.ExtraData?.FeaturedImageURL || null}
+                src={currentUser.ProfileEntryResponse?.ExtraData?.FeaturedImageURL || null}
                 height={200}
                 fallbackSrc="https://images.deso.org/4903a46ab3761c5d8bd57416ff411ff98b24b35fcf5480dde039eb9bae6eebe0.webp"
               />
@@ -277,9 +170,8 @@ export default function ProfilePage () {
               </Text>
             </Center>
             <Group justify="left">
-            <Button variant="light" compact onClick={open} >
-              <IconSettings />
-            </Button>
+         
+            <UpdateProfile />
             </Group>
             <Space h="sm" />
             
@@ -319,9 +211,9 @@ export default function ProfilePage () {
                 }}
                 dangerouslySetInnerHTML={{
                   __html:
-                    profile && profile.Profile && profile.Profile.Description
+                  currentUser.ProfileEntryResponse?.Description
                       ? replaceURLs(
-                          profile.Profile.Description.replace(/\n/g, "<br>")
+                        currentUser.ProfileEntryResponse?.Description.replace(/\n/g, "<br>")
                         )
                       : "",
                 }}
