@@ -175,8 +175,8 @@ export default function Wave() {
     try {
       
       const req = {
-        PublicKeyBase58Check: currentUser.PublicKeyBase58Check,
-        IsFollowingPublicKeyBase58Check: profile.PublicKeyBase58Check,
+        PublicKeyBase58Check: currentUser?.PublicKeyBase58Check,
+        IsFollowingPublicKeyBase58Check: profile?.PublicKeyBase58Check,
       }
 
       const result = await getIsFollowing(req);
@@ -193,13 +193,13 @@ export default function Wave() {
   // Function to Follow userName
   const followUser = async () => {
     try {
-      if (IsFollowing)
-          {
+      
+      
             await updateFollowingStatus({
               MinFeeRateNanosPerKB: 1000,
               IsUnfollow: false,
-              FollowedPublicKeyBase58Check: profile.PublicKeyBase58Check,
-              FollowerPublicKeyBase58Check: currentUser.PublicKeyBase58Check,
+              FollowedPublicKeyBase58Check: profile?.PublicKeyBase58Check,
+              FollowerPublicKeyBase58Check: currentUser?.PublicKeyBase58Check,
             });
             getIsFollowingData();
             notifications.show({
@@ -208,24 +208,16 @@ export default function Wave() {
               color: "green",
               message: `You successfully followed ${userName}`,
             }); 
-          } else {
+         
+        } catch (error) {
             notifications.show({
-              title: `Wait!`,
+              title: "Error",
               icon: <IconX size="1.1rem" />,
               color: "red",
-              message: `You successfully followed ${userName}`,
-            }); 
-
+              message: `Something Happened: ${error}`,
+            });
+          
           }
-  } catch (error) {
-      notifications.show({
-        title: "Error",
-        icon: <IconX size="1.1rem" />,
-        color: "red",
-        message: "Something Happened!",
-      });
-     
-    }
   };
 
   // Function to Unfollow userName
@@ -260,18 +252,15 @@ export default function Wave() {
     try {
       setIsLoadingLivestream(true);
   
-      // Fetch the user's posts
       const postData = await getPostsForUser({
         Username: userName,
-        NumToFetch: 20, // Fetch the first 20 posts
+        NumToFetch: 20,
       });
   
-      // Find the first post with WavesStreamTitle in PostExtraData
       const livestreamPost = postData.Posts.find(
         (post) => post.PostExtraData?.WavesStreamTitle
       );
   
-      // Set the livestream post to state
       setLivestreamPost(livestreamPost);
       
       setIsLoadingLivestream(false);
