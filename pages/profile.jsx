@@ -38,12 +38,11 @@ import classes from './wave/wave.module.css';
 import Post from "@/components/Post";
 import { Chat } from '@/components/Chat';
 import { UpdateProfile } from "../components/UpdateProfile";
+import { replaceURLs } from "../helpers/linkHelper";
 
 export default function ProfilePage () {
 
   const { currentUser } = useContext(DeSoIdentityContext);
-  console.log(currentUser)
-  const [profile, setProfile] = useState([]);
   const [posts, setPosts] = useState([]);
   const [NFTs, setNFTs] = useState([]);
   const [followerInfo, setFollowers] = useState({ followers: 0, following: 0 });
@@ -112,15 +111,6 @@ export default function ProfilePage () {
     }
   }, [currentUser]);
 
-
-  const replaceURLs = (text) => {
-    const urlRegex = /(https?:\/\/[^\s]+)/g;
-    const atSymbolRegex = /@(\w+)/g; 
-  
-    return text
-      .replace(urlRegex, (url) => `<a href="${url}" target="_blank" rel="noopener noreferrer">${url}</a>`)
-      .replace(atSymbolRegex, (match, username) => `<a href="/wave/${username}" target="_blank">@${username}</a>`);
-  };
 
   return (
     <>

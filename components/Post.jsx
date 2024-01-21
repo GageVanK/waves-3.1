@@ -58,7 +58,7 @@ import {
   } from "./EmbedUrls";
   import { FaVoteYea } from "react-icons/fa";
   import { BsInfoCircleFill } from "react-icons/bs";
-
+  import { replaceURLs } from "../helpers/linkHelper";
  
 
 export default function Post({ post, username, key }) {
@@ -74,6 +74,8 @@ export default function Post({ post, username, key }) {
     const [quoteBody, setQuoteBody] = useState('');
     const [voteCount, setVoteCount] = useState();
     const [didVote, setDidVote] = useState(false);
+    const [isLiked, setIsLiked] = useState(false);
+    const [likeCount, setLikeCount] = useState(post?.LikeCount);
 
     const isWavesStream = post.VideoURLs && post.VideoURLs[0] && post.VideoURLs[0].includes('https://lvpr.tv/?v=');
 
@@ -83,30 +85,7 @@ export default function Post({ post, username, key }) {
       return playbackId;
     };
 
-    const getData = async () => {
-      try {
-        const appState = await getAppState({ PublicKeyBase58Check: "BC1YLjYHZfYDqaFxLnfbnfVY48wToduQVHJopCx4Byfk4ovvwT6TboD" });
-    
-        const desoUSD = appState.USDCentsPerDeSoCoinbase / 100;
-        const nanoToDeso = 0.000000001;
-        const diamondLevelMapUsd = Object.values(appState.DiamondLevelMap).map(nanos => {
-          const deso = nanos * nanoToDeso;
-          let usdValue = deso * desoUSD;
-    
-          if (usdValue < 0.01) {
-            usdValue = 0.01;
-          }
-    
-          return usdValue.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
-        });
-    
-        setDiamondLevelsUsd(diamondLevelMapUsd);
-      } catch (error) {
-        console.error('Error in getData:', error);
-      }
-    }
-    
-
+    // Getting Diamond Values in USD
     const getDiamondUSD = async () => {
       try {
         const appState = await getAppState({ PublicKeyBase58Check: "BC1YLjYHZfYDqaFxLnfbnfVY48wToduQVHJopCx4Byfk4ovvwT6TboD" });
@@ -129,7 +108,7 @@ export default function Post({ post, username, key }) {
       }
     }
     
-    // Comment
+    // Comment Function
     const submitComment = async () => {
       if (!currentUser) {
         notifications.show({
@@ -172,7 +151,7 @@ export default function Post({ post, username, key }) {
       setComment("");
     };
     
-    //Repost
+    // Repost Function
     const submitRepost = async () => {
       if (!currentUser) {
         notifications.show({
@@ -212,7 +191,7 @@ export default function Post({ post, username, key }) {
       }
     };
 
-    //Quote Post
+    //Quote Post Function
     const submitQuote = async () => {
       if (!currentUser) {
         notifications.show({
@@ -252,7 +231,7 @@ export default function Post({ post, username, key }) {
       }
     };
     
-    //Like Post
+    //Like Post Function
     const submitHeart = async () => {
       if (!currentUser) {
         notifications.show({
@@ -269,22 +248,27 @@ export default function Post({ post, username, key }) {
           TransactorPublicKeyBase58Check: currentUser.PublicKeyBase58Check,
           PostHashHex: post.PostHashHex,
           AssociationType: "REACTION",
-          AssociationValue: "LIKE",
+          AssociationValue: "HEART",
           MinFeeRateNanosPerKB: 1000,
         });
+
+        setIsLiked(true);
         notifications.show({
           title: "Success",
           icon: <IconHeartFilled size="1.1rem" />,
           color: "blue",
-          message: "Liked!",
+          message: `You Hearted ${username}&apos post! Keep it going!`,
         });
+
       } catch (error) {
         notifications.show({
           title: "Error",
           icon: <IconX size="1.1rem" />,
           color: "red",
-          message: "Something Happened!",
+          message: `Something Happened: ${error}`,
         });
+        setIsLiked(false);
+        setLikeCount(likeCount + 1);
         console.error("Error submitting heart:", error);
       }
     };
@@ -424,15 +408,6 @@ useEffect(() => {
   }
 }, [didVote]); // Dependency array - effect runs when didVote changes
    
-
-    const replaceURLs = (text) => {
-      const urlRegex = /(https?:\/\/[^\s]+)/g;
-      const atSymbolRegex = /@(\w+)/g; // Captures username after '@'
-    
-      return text
-        .replace(urlRegex, (url) => `<a href="${url}" target="_blank" rel="noopener noreferrer">${url}</a>`)
-        .replace(atSymbolRegex, (match, username) => `<a href="/wave/${username}" target="_blank">@${username}</a>`);
-    };
     
     return(
         <>
@@ -755,13 +730,15 @@ useEffect(() => {
                       radius="md"
                       size={36}
                     >
-                      <IconHeart
-                        size={18} 
-                      />
+                      {isLiked ? (
+                        <IconHeartFiled size={18} />
+                      ) :( 
+                        <IconHeart size={18} />
+                      )} 
                     </ActionIcon>
                   </Tooltip>
                   <Text size="xs" c="dimmed">
-                    {post.LikeCount}
+                    {likeCount}
                   </Text>
 
                   <Space w="sm" />
@@ -806,8 +783,6 @@ useEffect(() => {
                   </Menu.Dropdown>
 
                     </Menu>
-                  
-
                   
                   <Text size="xs" c="dimmed">
                     {post.RepostCount}

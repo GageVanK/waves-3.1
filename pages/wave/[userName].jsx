@@ -58,6 +58,7 @@ import { useRouter } from 'next/router'
 import { Chat } from '@/components/Chat';
 import classes from './wave.module.css';
 import Post from "@/components/Post";
+import { replaceURLs } from "../../helpers/linkHelper";
 
 export default function Wave() {
   const router = useRouter();
@@ -86,15 +87,6 @@ export default function Wave() {
     return playbackId;
   };
  
-  const replaceURLs = (text) => {
-    const urlRegex = /(https?:\/\/[^\s]+)/g;
-    const atSymbolRegex = /@(\w+)/g; // Captures username after '@'
-  
-    return text
-      .replace(urlRegex, (url) => `<a href="${url}" target="_blank" rel="noopener noreferrer">${url}</a>`)
-      .replace(atSymbolRegex, (match, username) => `<a href="/wave/${username}" target="_blank">@${username}</a>`);
-  };
-
   // Get Profile For userName
   const fetchProfile = async () => {
     try {
