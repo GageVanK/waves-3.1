@@ -767,41 +767,42 @@ useEffect(() => {
                             
                           />
 
-        {currentUser && isFollowingUser ? (
-            
-              
-              <Tooltip
-                label={`Unfollow @${username}`}
-                withArrow
-                arrowPosition="center"
-              >
-                <ActionIcon
-                variant="default"
-                  size={36}
-                  onClick={unfollowUser}
-                  mb={22}
-                >
-                  <RiUserUnfollowLine size="1.2rem" stroke={1.5} />
-                </ActionIcon>
-              </Tooltip>
-            
-          ) : (
-            <Tooltip
-            label={`Follow @${username}`}
-                withArrow
-                arrowPosition="center"
-              >
-                <ActionIcon
-                  variant="default"
-                  size={36}
-                  onClick={followUser}
-                  mb={22}
-                >
-                  <RiUserAddLine  size="1.2rem" stroke={1.5} />
-                </ActionIcon>
-              </Tooltip>
-          
-        )}
+{currentUser && currentUser.ProfileEntryResponse.Username !== username ? (
+  <>
+    {isFollowingUser ? (
+      <Tooltip
+        label={`Unfollow @${username}`}
+        withArrow
+        arrowPosition="center"
+      >
+        <ActionIcon
+          variant="default"
+          size={36}
+          onClick={unfollowUser}
+          mb={22}
+        >
+          <RiUserUnfollowLine size="1.2rem" stroke={1.5} />
+        </ActionIcon>
+      </Tooltip>
+    ) : (
+      <Tooltip
+        label={`Follow @${username}`}
+        withArrow
+        arrowPosition="center"
+      >
+        <ActionIcon
+          variant="default"
+          size={36}
+          onClick={followUser}
+          mb={22}
+        >
+          <RiUserAddLine size="1.2rem" stroke={1.5} />
+        </ActionIcon>
+      </Tooltip>
+    )}
+  </>
+) : null}
+
                         </Group>
                         <Space h="xs" />
                        

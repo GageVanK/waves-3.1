@@ -234,8 +234,7 @@ export function SubscriptionModal({ publickey, username }) {
 
     return(
         <>
-              <Button variant="gradient"
-                  gradient={{ from: "indigo", to: "cyan" }} rightSection={<GiWaveCrest size="1rem" />} onClick={openSub}>
+              <Button variant="gradient" gradient={{ from: "cyan", to: "indigo" }} rightSection={<GiWaveCrest size="1rem" />} onClick={openSub}>
               Subscribe
             </Button>
             <Modal
