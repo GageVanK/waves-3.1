@@ -63,7 +63,7 @@ import {
   import { useHover } from '@mantine/hooks';
   import { HiUsers, HiUserAdd, HiUserRemove } from "react-icons/hi";
   import { RiUserUnfollowLine, RiUserAddLine  } from "react-icons/ri";
-
+  import { SubscriptionModal } from "../components/SubscriptionModal";
 export default function Post({ post, username, key }) {
   const { hovered, ref } = useHover();
     const { currentUser } = useContext(DeSoIdentityContext);
@@ -776,8 +776,7 @@ useEffect(() => {
                 arrowPosition="center"
               >
                 <ActionIcon
-                  variant="gradient"
-                  gradient={{ from: "indigo", to: "cyan" }}
+                variant="default"
                   size={36}
                   onClick={unfollowUser}
                   mb={22}
@@ -793,8 +792,7 @@ useEffect(() => {
                 arrowPosition="center"
               >
                 <ActionIcon
-                  variant="gradient"
-                  gradient={{ from: "cyan", to: "indigo" }}
+                  variant="default"
                   size={36}
                   onClick={followUser}
                   mb={22}
@@ -833,13 +831,15 @@ useEffect(() => {
                           }}
                           dangerouslySetInnerHTML={{
                             __html:
-                              post.ProfileEntryResponse?.Description
+                              post?.ProfileEntryResponse?.Description
                                 ? replaceURLs(post.ProfileEntryResponse?.Description).replace(/\n/g, "<br>")
                                 : "",
                           }}
                         />
                      
-
+                         <Group grow>
+                         <SubscriptionModal publickey={post.PosterPublicKeyBase58Check} username={username} />
+                          </Group>
                     </HoverCard.Dropdown>
                   </HoverCard>
                   </Group>
