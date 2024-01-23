@@ -157,7 +157,7 @@ export default function ProfilePage () {
         
         <div>
               <Text fw={500} truncate="end">
-                {currentUser.ProfileEntryResponse?.ExtraData.DisplayName || currentUser.ProfileEntryResponse?.Username || currentUser.PublicKeyBase58Check}
+                {currentUser.ProfileEntryResponse?.ExtraData?.DisplayName || currentUser.ProfileEntryResponse?.Username || currentUser.PublicKeyBase58Check}
               </Text>
               <Text size="xs" fw={500} tt="lowercase">
                 @{currentUser.ProfileEntryResponse?.Username || currentUser.PublicKeyBase58Check}
@@ -370,7 +370,7 @@ export default function ProfilePage () {
               <Center>
                 <Button
                   fullWidth
-                  leftIcon={<GiWaveCrest size="1rem" />}
+                  leftSection={<GiWaveCrest size="1rem" />}
                   variant="gradient"
                   gradient={{ from: "cyan", to: "indigo" }}
                   onClick={() => identity.login()}

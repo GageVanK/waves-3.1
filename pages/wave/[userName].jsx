@@ -212,8 +212,8 @@ export default function Wave() {
     await updateFollowingStatus({
       MinFeeRateNanosPerKB: 1000,
       IsUnfollow: true,
-      FollowedPublicKeyBase58Check: profile.PublicKeyBase58Check,
-      FollowerPublicKeyBase58Check: currentUser.PublicKeyBase58Check,
+      FollowedPublicKeyBase58Check: profile?.PublicKeyBase58Check,
+      FollowerPublicKeyBase58Check: currentUser?.PublicKeyBase58Check,
     });
     getIsFollowingData();
     notifications.show({

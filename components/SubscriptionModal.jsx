@@ -324,7 +324,7 @@ export function SubscriptionModal({ publickey, username }) {
                               variant="light"
                               radius="md"
                               fullWidth
-                              leftIcon={<IconHeartHandshake size="1.5rem"  />}
+                              leftSection={<IconHeartHandshake size="1.5rem"  />}
                             >
                               Subscribe
                             </Button>
@@ -388,7 +388,7 @@ export function SubscriptionModal({ publickey, username }) {
                               onClick={subTier2}
                               variant="light"
                               radius="md"
-                              leftIcon={<IconHeartHandshake size="1.5rem"  />}
+                              leftSection={<IconHeartHandshake size="1.5rem"  />}
                             >
                               Subscribe
                             </Button>
@@ -450,7 +450,7 @@ export function SubscriptionModal({ publickey, username }) {
                               variant="light"
                               radius="md"
                               fullWidth
-                              leftIcon={<IconHeartHandshake size="1.5rem"  />}
+                              leftSection={<IconHeartHandshake size="1.5rem"  />}
                             >
                               Subscribe
                             </Button>
@@ -478,7 +478,7 @@ export function SubscriptionModal({ publickey, username }) {
                               </Text>
                               <Divider my="sm" />
                               <Button
-                                leftIcon={<GiWaveCrest size="1rem" />}
+                                leftSection={<GiWaveCrest size="1rem" />}
                                 variant="gradient"
                                 gradient={{ from: "cyan", to: "indigo" }}
                                 onClick={() => identity.login()}
@@ -501,7 +501,7 @@ export function SubscriptionModal({ publickey, username }) {
                             </Text>
                             <Divider my="sm" />
                             <Button
-                              leftIcon={<GiWaveCrest size="1rem" />}
+                              leftSection={<GiWaveCrest size="1rem" />}
                               variant="gradient"
                               gradient={{ from: "cyan", to: "indigo" }}
                               onClick={() => identity.login()}

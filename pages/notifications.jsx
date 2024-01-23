@@ -165,7 +165,7 @@ export default function NotificationsPage () {
               <Center>
                 <Button
                   fullWidth
-                  leftIcon={<GiWaveCrest size="1rem" />}
+                  leftSection={<GiWaveCrest size="1rem" />}
                   variant="gradient"
                   gradient={{ from: "cyan", to: "indigo" }}
                   onClick={() => identity.login()}
