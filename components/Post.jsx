@@ -836,7 +836,7 @@ useEffect(() => {
                                 : "",
                           }}
                         />
-                     
+                         <Space h="sm" />
                          <Group grow>
                          <SubscriptionModal publickey={post.PosterPublicKeyBase58Check} username={username} />
                           </Group>
