@@ -293,7 +293,7 @@ export const Stream = () => {
           {' '}
           <Space h="md" />
           <Center>
-            <Text fz="lg" fw={777} c="dimmed" truncate>
+            <Text fz="lg" fw={777} c="dimmed" truncate="end">
               Start Streaming
             </Text>
           </Center>
@@ -640,7 +640,7 @@ export const Stream = () => {
           {' '}
           <Space h="md" />
           <Center>
-            <Text fz="lg" fw={777} c="dimmed" truncate>
+            <Text fz="lg" fw={777} c="dimmed" truncate="end">
               Start Streaming
             </Text>
           </Center>

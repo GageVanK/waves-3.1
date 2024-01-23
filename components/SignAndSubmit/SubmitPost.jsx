@@ -50,7 +50,7 @@ import {
     getEmbedURL,
     getEmbedWidth,
     isValidEmbedURL,
-  } from "../EmbedUrls";
+  } from "../../helpers/EmbedUrls";
   import { IconCheck, IconX } from "@tabler/icons-react";
   import { notifications } from "@mantine/notifications";
   import { FaPoll } from "react-icons/fa";
@@ -73,7 +73,6 @@ import {
     const resetVideoRef = useRef(null);
     const [video, setVideo] = useState(null);
     const [bodyText, setBodyText] = useState('');
-
     const [poll, setPoll] = useState(false);
     const [embed, setEmbed] = useState(false);
     const [pollOptions, setPollOptions] = useState(["", ""]);
@@ -103,6 +102,7 @@ import {
         setPoll(false)
       } else {
         setPoll(true)
+        
       }
     }
 
@@ -294,7 +294,7 @@ import {
        
               <Group>
                 <Avatar size="md" radius="xl" alt="Profile Picture" />
-                <Text fz="lg" fw={777} variant="gradient" truncate></Text>
+                <Text fz="lg" fw={777} variant="gradient" truncate="end"></Text>
               </Group>
               <Space h="sm" />
               <Textarea
@@ -465,17 +465,20 @@ import {
                       setBodyText("");
                       if (imageURL) {
                         setImageURL("");
+                        setImageFile(null);
+                        resetImageRef.current?.();
                       }
                       if (embedUrl) {
                         setEmbedUrl("");
                       }
                       if (video) {
                         setVideo(null);
+                        resetVideoRef.current?.();
                       }
 
                       if (pollOptions && pollOptions.length > 1) {
-                        setPollOptions("", "")
-                        pollToggle(false)
+                        setPollOptions(["", ""])
+                        setPoll(false)
                       }
                       if (typeof close === 'function') {
                       close();
@@ -492,12 +495,12 @@ import {
                   <Group>
                     <Avatar
                       size="lg"
-                      radius="xl"
+                      radius="md"
                       src={`https://node.deso.org/api/v0/get-single-profile-picture/${currentUser?.PublicKeyBase58Check}`}
                       alt="Profile Picture"
                     />
-                    <Text fz="lg" fw={777} variant="gradient" truncate>
-                      {currentUser.ProfileEntryResponse?.Username ?? currentUser.PublicKeyBase58Check}
+                    <Text fz="lg" fw={500} truncate="end">
+                      {currentUser.ProfileEntryResponse?.ExtraData?.DisplayName || currentUser.ProfileEntryResponse?.Username || currentUser.PublicKeyBase58Check}
                     </Text>
                   </Group>
                   <Space h="sm" />
@@ -514,7 +517,7 @@ import {
                   <Space h="sm" />
                   {imageURL && (
                     <div>
-                      <ActionIcon onClick={() => {
+                      <ActionIcon type="button" onClick={() => {
                         setImageURL("");
                         setImageFile(null);
                         resetImageRef.current?.();
@@ -547,7 +550,7 @@ import {
              {video && asset?.[0]?.playbackId && (
                           <>
                            <div>
-                          <ActionIcon onClick={() => {
+                          <ActionIcon type="button" onClick={() => {
                         setVideo(null);
                         
                         resetVideoRef.current?.();
@@ -586,7 +589,7 @@ import {
                     {embedUrl && (
                       <>
                       <div>
-                      <ActionIcon onClick={() => setEmbedUrl("")} size="xs" color="red"> 
+                      <ActionIcon type="button" onClick={() => setEmbedUrl("")} size="xs" color="red"> 
                       <IconX/>
                       </ActionIcon>
                       </div>
@@ -639,14 +642,14 @@ import {
                             } 
                           position="bottom" 
                           withArrow>
-                              <ActionIcon size="xs" radius="xl" variant="default">
+                              <ActionIcon type="button" size="xs" radius="xl" variant="default">
                                 <TiInfoLargeOutline/>
                               </ActionIcon>
                               </Tooltip>   
                               </>
                             }
                             rightSection={embedUrl && (
-                            <ActionIcon onClick={() => setEmbedUrl("")} color="red" size="xs" radius="xl" variant="subtle">
+                            <ActionIcon type="button" onClick={() => setEmbedUrl("")} color="red" size="xs" radius="xl" variant="subtle">
                             <IconX/>
                           </ActionIcon>)}
                             value={embedUrl}
@@ -669,7 +672,7 @@ import {
                         <Group justify="right">
                           <Tooltip label="Add Options">
                        
-                        <ActionIcon onClick={addPollOption} size="sm" >
+                        <ActionIcon type="button" onClick={addPollOption} size="sm" >
                         <CgPlayListAdd size="1.1rem"/>
                         </ActionIcon>
                         </Tooltip>
@@ -686,7 +689,7 @@ import {
                   value={option}
                   onChange={(event) => handlePollOptions(index, event.currentTarget.value)}
                   rightSection={index > 1 && (
-                    <ActionIcon radius="xl" size="sm" color="red" variant="light" onClick={() => deletePollOption(index)}>
+                    <ActionIcon radius="xl" size="sm" color="red" variant="light" type="button" onClick={() => deletePollOption(index)}>
                       <MdDeleteForever />
                     </ActionIcon>
                   )}
@@ -751,6 +754,7 @@ import {
                             variant="default"
                             {...props}
                             loading={isVideoLoading}
+
                           >
                             <TbVideoPlus size="1.2rem" />
                           </ActionIcon>
@@ -764,6 +768,7 @@ import {
                             size="lg"
                             variant="default"
                             onClick={pollToggle}
+                            type="button" 
                           >
                             <FaPoll size="1.2rem" />
                           </ActionIcon>
@@ -776,7 +781,7 @@ import {
                             size="lg"
                             variant="default"
                             onClick={embedToggle}
-
+                            type="button" 
                           >
                             <ImEmbed size="1.2rem" />
                           </ActionIcon>

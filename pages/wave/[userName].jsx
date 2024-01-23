@@ -87,7 +87,7 @@ export default function Wave() {
     return playbackId;
   };
  
-  // Get Profile For userName
+  // Get Profile
   const fetchProfile = async () => {
     try {
       const profileData = await getSingleProfile({
@@ -102,7 +102,7 @@ export default function Wave() {
     }
   };
  
-  // Get Follow Counts for userName
+  // Get Follow Counts
   const fetchFollowerInfo = async () => {
     try {
       const following = await getFollowersForUser({
@@ -162,7 +162,7 @@ export default function Wave() {
 
  
 
-  // Get if Logged In User follows userName
+  // Get if Current User follows profile
   const getIsFollowingData = async () => {
     try {
       
@@ -444,6 +444,7 @@ export default function Wave() {
       fetchProfile();
       fetchFollowerInfo();
     }
+    console.log(profile)
   }, [userName]);
 
   useEffect(() => {
@@ -465,39 +466,50 @@ export default function Wave() {
         <Card.Section>
           <Image
             src={profile?.ExtraData?.FeaturedImageURL || null}
-            height={200}
+       
             fallbackSrc="https://images.deso.org/4903a46ab3761c5d8bd57416ff411ff98b24b35fcf5480dde039eb9bae6eebe0.webp"
+            height={321}
+
           />
         </Card.Section>
 
-        <Center>
+        <Group>
+          <>
           <Avatar
-            size={80}
-            radius={80}
+            
             src={
-              `https://node.deso.org/api/v0/get-single-profile-picture/${profile?.PublicKeyBase58Check}` ||
-              profile?.ExtraData?.LargeProfilePicURL || null
+              profile?.ExtraData?.LargeProfilePicURL || `https://node.deso.org/api/v0/get-single-profile-picture/${profile?.PublicKeyBase58Check}` ||
+              null
             }
             alt="Profile Picture"
-            mx="auto"
-            mt={-30}
-         
+            className={classes.avatar}
+            size={123}
+            radius="md"
+           
+            mt={-55}
           />
-        </Center>
+        
+        </>
+        <div>
 
-        <Center>
+        
           {profile !== null ? (
             <>
-              <Text className={classes.Avatar} fz="lg" fw={777} variant="gradient" truncate>
-                {userName}
+              <Text className={classes.Avatar} fw={500}>
+                {profile?.ExtraData?.DisplayName || userName}
+              </Text>
+              <Text size="xs" className={classes.Avatar} tt="lowercase">
+                @{userName}
               </Text>
             </>
           ) : (
-            <Text fz="lg" fw={777} variant="gradient" truncate>
+            <Text fz="lg" fw={777} truncate="end">
               User does not exist
             </Text>
           )}
-        </Center>
+       
+        </div>
+        </Group>
 
         <Space h="md" />
         <Card.Section>

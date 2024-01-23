@@ -135,34 +135,42 @@ export default function ProfilePage () {
             <Card.Section>
               <Image
                 src={currentUser.ProfileEntryResponse?.ExtraData?.FeaturedImageURL || null}
-                height={200}
+                height={321}
                 fallbackSrc="https://images.deso.org/4903a46ab3761c5d8bd57416ff411ff98b24b35fcf5480dde039eb9bae6eebe0.webp"
               />
             </Card.Section>
-            <Center>
+            <Group justify="space-between">
+            <Group>
+        
               <Avatar
-                mx="auto"
-                mt={-30}
+                size={123}
+                radius="md"
+                mt={-55}
                 className={classes.avatar}
-                size={80}
-                radius={80}
-                src={
+              
+                src={ currentUser.ProfileEntryResponse?.ExtraData?.LargeProfilePicURL ||
                   `https://node.deso.org/api/v0/get-single-profile-picture/${userPublicKey}` ||
                   null
                 }
                 alt="Profile Picture"
               />
-            </Center>
-            <Space h="sm" />
-            <Center>
-              <Text fz="lg" fw={777} variant="gradient" truncate>
-                {currentUser.ProfileEntryResponse?.Username ?? currentUser.PublicKeyBase58Check}
+        
+        <div>
+              <Text fw={500} truncate="end">
+                {currentUser.ProfileEntryResponse?.ExtraData.DisplayName || currentUser.ProfileEntryResponse?.Username || currentUser.PublicKeyBase58Check}
               </Text>
-            </Center>
-            <Group justify="left">
-         
-            <UpdateProfile />
-            </Group>
+              <Text size="xs" fw={500} tt="lowercase">
+                @{currentUser.ProfileEntryResponse?.Username || currentUser.PublicKeyBase58Check}
+              </Text>
+              </div>
+              </Group>
+
+              
+                <UpdateProfile />
+             
+              </Group>
+            
+            
             <Space h="sm" />
             
 

@@ -120,9 +120,9 @@ useEffect(() => {
                          
                         />
             
-                        <div style={{ flex: 1 }}>
-                          <Text size="sm" fw={500}>
-                          {post.ProfileEntryResponse.Username}
+                        <div style={{ flex: 1, maxWidth: 111 }}>
+                          <Text size="sm" fw={500} truncate="end">
+                          {post.ProfileEntryResponse?.ExtraData?.DisplayName || post.ProfileEntryResponse.Username}
                           </Text>
                         </div>
 
@@ -183,9 +183,9 @@ useEffect(() => {
                           radius="xl"
                         />
             
-                        <div style={{ flex: 1 }}>
-                          <Text size="sm" fw={500}>
-                          {post.ProfileEntryResponse.Username}
+                        <div style={{ flex: 1, maxWidth: 111 }}>
+                          <Text size="sm" fw={500} truncate="end">
+                          {post.ProfileEntryResponse?.ExtraData?.DisplayName || post.ProfileEntryResponse.Username}
                           </Text>
                         </div>
 

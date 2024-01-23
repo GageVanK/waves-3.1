@@ -192,8 +192,10 @@ export function UpdateProfile() {
             title: "Success",
             icon: <IconCheck size="1.1rem" />,
             color: "green",
-            message: "Profile Updated!",
-          });
+            message: "Profile Updated! Refresh to see changes!",
+          }); 
+
+          close();
         } catch (error) {
             notifications.show({
                 title: "Error Updating Profile",
