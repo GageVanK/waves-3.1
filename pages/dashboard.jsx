@@ -179,11 +179,17 @@ import {
                   <AddTwitch />
                   <Space w={1}/>
                </Group>
+               
                 </Group>
               
               
-              <Space h="sm" />
-              
+                <Space h="md"/>
+                  {currentUser.ProfileEntryResponse?.ExtraData?.TwitchURL && (
+                        <Group grow>
+                          <TwitchEmbed channel={extractTwitchUsername(currentUser.ProfileEntryResponse?.ExtraData?.TwitchURL)} withChat darkMode={true} onVideoReady={handleReady} />
+                        </Group>
+                      )}
+                <Space h="sm"/>
   
               {currentUser.ProfileEntryResponse === null ? (
                 <>
@@ -278,12 +284,7 @@ import {
                 </Group>
   
             <Space h="xl" />
-                  {currentUser.ProfileEntryResponse?.ExtraData?.TwitchURL && (
-                    <Group grow>
-                       <TwitchEmbed channel={extractTwitchUsername(currentUser.ProfileEntryResponse?.ExtraData?.TwitchURL)} withChat darkMode={true} onVideoReady={handleReady} />
-                    </Group>
-                  )}
-            <Space h="sm"/>
+                  
             <Tabs radius="sm" defaultValue="first">
               <Tabs.List grow position="center">
                 <Tabs.Tab value="first">

@@ -212,7 +212,7 @@ export function UpdateProfile() {
     return(
         <>
 
-            <Button variant="light" compact onClick={open} >
+            <Button variant="light"  size="compact-sm" onClick={open} >
               <IconSettings />
             </Button>
 
