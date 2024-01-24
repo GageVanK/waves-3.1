@@ -183,6 +183,12 @@ export default function ProfilePage () {
             
             
             <Space h="sm" />
+              {currentUser.ProfileEntryResponse?.ExtraData?.TwitchURL && (
+                    <Group grow>
+                      <TwitchEmbed channel={extractTwitchUsername(currentUser.ProfileEntryResponse?.ExtraData?.TwitchURL)} withChat darkMode={true} onVideoReady={handleReady} />
+                    </Group>
+                  )}
+            <Space h="sm"/>
             
 
             {currentUser.ProfileEntryResponse === null ? (
@@ -278,12 +284,7 @@ export default function ProfilePage () {
               </Group>
 
           <Space h="xl" />
-                {currentUser.ProfileEntryResponse?.ExtraData?.TwitchURL && (
-                  <Group grow>
-                     <TwitchEmbed channel={extractTwitchUsername(currentUser.ProfileEntryResponse?.ExtraData?.TwitchURL)} withChat darkMode={true} onVideoReady={handleReady} />
-                  </Group>
-                )}
-          <Space h="sm"/>
+             
           <Tabs radius="sm" defaultValue="first">
             <Tabs.List grow position="center">
               <Tabs.Tab value="first">
