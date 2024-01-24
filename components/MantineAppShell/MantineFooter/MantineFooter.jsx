@@ -2,11 +2,11 @@ import { ActionIcon, Group, Modal, Text } from "@mantine/core";
 import {
   IconBellRinging,
   IconHome2,
-  IconUser,
+  IconLayoutDashboard,
   IconReceipt2,
 } from "@tabler/icons-react";
 import { FiPlus } from "react-icons/fi";
-
+import { MdOutlineDashboard } from "react-icons/md";
 import { useDisclosure } from "@mantine/hooks";
 import { useState, useContext, useEffect} from "react";
 import { DeSoIdentityContext } from 'react-deso-protocol';
@@ -90,15 +90,15 @@ export function MantineFooter() {
         <ActionIcon
           variant="subtle"
           className={classes.link}
-          data-active={active === "/profile" || undefined}
+          data-active={active === "/dashboard" || undefined}
           size="xl"
           radius="md"
           onClick={() => {
-            setActive("/profile");
-            router.push("/profile");
+            setActive("/dashboard");
+            router.push("/dashboard");
           }}
         >
-          <IconUser size="1.4rem" />
+          <IconLayoutDashboard size="1.4rem" />
         </ActionIcon>
 
         {currentUser && (

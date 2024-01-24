@@ -610,6 +610,7 @@ export const Stream = () => {
           )}
           <Space h="md" />
           <Group>
+            
             <CopyButton
               value={`https://desowaves.vercel.app/wave/${currentUser.ProfileEntryResponse.Username}`}
               timeout={2000}

@@ -139,7 +139,7 @@ export function UpdateProfile() {
         
         
         setAvatarURL(response.ImageURL);
-        console.log(avatarURL)
+        
         notifications.show({
           title: "Success",
           icon: <IconCheck size="1.1rem" />,

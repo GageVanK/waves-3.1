@@ -89,7 +89,7 @@ export function MantineAppShell({ children }) {
               </>
             )}
 
-            {(router.pathname.startsWith('/wave/') && userName) || (router.pathname === '/profile' && currentUser) ? (
+            {(router.pathname.startsWith('/wave/') && userName) || (router.pathname === '/dashboard' && currentUser) ? (
             <>
             <Space h="xl"/>
               <Chat handle={userName || currentUser?.ProfileEntryResponse?.Username || "Anon"} />

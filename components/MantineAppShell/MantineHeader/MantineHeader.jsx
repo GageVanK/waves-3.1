@@ -26,7 +26,8 @@ import {
     IconReceipt2,
     IconSwitchHorizontal,
     IconListSearch,
-    IconSearch
+    IconSearch,
+    IconLayoutDashboard
   } from '@tabler/icons-react';
 import classes from './MantineHeader.module.css';
 import Link from 'next/link';
@@ -42,6 +43,7 @@ import { BsPlusCircleDotted } from "react-icons/bs";
 import { BiSearchAlt } from "react-icons/bi";
 import NotificationsPage from "../../../pages/notifications"
 import { useRouter } from 'next/router';
+import { MdOutlineDashboard } from "react-icons/md";
 
   export function MantineHeader() {
    const [drawerOpened, { toggle: toggleDrawer, close: closeDrawer }] = useDisclosure(false);
@@ -145,16 +147,16 @@ import { useRouter } from 'next/router';
       <IconHome2 />
     </ActionIcon>
     </Tooltip>
-    <Tooltip label="Profile" withArrow  position="bottom" offset={3}>
+    <Tooltip label="Dashboard" withArrow  position="bottom" offset={3}>
     <ActionIcon
     component={Link}
-    href="/profile"
+    href="/dashboard"
       variant="gradient"
       size="xl"
       aria-label="Gradient action icon"
       gradient={{ from: 'blue', to: 'cyan', deg: 90 }}
     >
-      <IconUser />
+      <IconLayoutDashboard />
     </ActionIcon>
     </Tooltip>
     <Tooltip label="Wallet" withArrow  position="bottom" offset={3}>
@@ -381,7 +383,7 @@ import { useRouter } from 'next/router';
               Home
             </Link>
             <Space h='md'/>
-            <Link href="/profile" className={classes.link} onClick={closeDrawer}> 
+            <Link href="/dashboard" className={classes.link} onClick={closeDrawer}> 
             <ActionIcon
    
       variant="gradient"
@@ -389,7 +391,7 @@ import { useRouter } from 'next/router';
       aria-label="Gradient action icon"
       gradient={{ from: 'blue', to: 'cyan', deg: 90 }}
     >
-      <IconUser/>
+      <IconLayoutDashboard/>
     </ActionIcon>
     <Space w='md'/>
               Profile

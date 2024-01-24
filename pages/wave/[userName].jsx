@@ -1,5 +1,5 @@
 
-import { useEffect, useState, useContext } from "react";
+import { useEffect, useState, useContext, useRef} from "react";
 
 
 import { Player } from "@livepeer/react";
@@ -57,6 +57,8 @@ import classes from './wave.module.css';
 import Post from "@/components/Post";
 import { replaceURLs } from "../../helpers/linkHelper";
 import { SubscriptionModal } from "../../components/SubscriptionModal";
+import { extractTwitchUsername } from "@/helpers/linkHelper";
+import { TwitchEmbed } from 'react-twitch-embed';
 
 export default function Wave() {
   const router = useRouter();
@@ -74,7 +76,11 @@ export default function Wave() {
   const [openedChat, { toggle }] = useDisclosure(true);
   const [livestreamPost, setLivestreamPost] = useState(null); 
   const [isLoadingLivestream, setIsLoadingLivestream] = useState(false);
+  const embed = useRef(); 
 
+  const handleReady = (e) => {
+    embed.current = e;
+  };
   const extractPlaybackId = (url) => {
     const match = url.match(/https:\/\/lvpr\.tv\/\?v=(.*)/);
     const playbackId = match ? match[1] : null;
@@ -90,7 +96,7 @@ export default function Wave() {
       });
       
       setProfile(profileData.Profile);
-      
+    
     } catch (error) {
       console.error("Error fetching user profile:", error);
     }
@@ -263,7 +269,7 @@ export default function Wave() {
       fetchProfile();
       fetchFollowerInfo();
     }
-    console.log(profile)
+   
   }, [userName]);
 
   useEffect(() => {
@@ -331,6 +337,12 @@ export default function Wave() {
 
         <Space h="md" />
         <Card.Section>
+        {profile.ExtraData?.TwitchURL ? (
+      <Group grow>
+        <TwitchEmbed channel={extractTwitchUsername(profile.ExtraData?.TwitchURL)} withChat darkMode={true} onVideoReady={handleReady} />
+      </Group>
+    ) : (
+      <>
           {livestreamPost ? (
             <>
            
@@ -366,6 +378,8 @@ export default function Wave() {
               }
               labelPosition="center"
             />
+          )}
+          </>
           )}
         </Card.Section>
         <Space h="md" />

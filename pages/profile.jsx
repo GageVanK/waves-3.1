@@ -22,7 +22,7 @@ import {
   rem,
 } from "@mantine/core";
 import { GiWaveCrest } from "react-icons/gi";
-import { useState, useContext, useEffect } from "react";
+import { useState, useContext, useEffect, useRef } from "react";
 import { DeSoIdentityContext } from "react-deso-protocol";
 import {
   getSingleProfile,
@@ -39,9 +39,11 @@ import Post from "@/components/Post";
 import { Chat } from '@/components/Chat';
 import { UpdateProfile } from "../components/UpdateProfile";
 import { replaceURLs } from "../helpers/linkHelper";
+import { TwitchEmbed } from 'react-twitch-embed';
+import { extractTwitchUsername } from "@/helpers/linkHelper";
+import { AddTwitch } from '@/components/AddTwitchModal';
 
 export default function ProfilePage () {
-
   const { currentUser } = useContext(DeSoIdentityContext);
   const [posts, setPosts] = useState([]);
   const [NFTs, setNFTs] = useState([]);
@@ -50,8 +52,11 @@ export default function ProfilePage () {
   const [isLoadingPosts, setIsLoadingPosts] = useState(false);
   const [isLoadingNFTs, setIsLoadingNFTs] = useState(false);
   const [openedChat, { toggle }] = useDisclosure(true);
+  const embed = useRef(); 
 
-
+  const handleReady = (e) => {
+    embed.current = e;
+  };
 
   const getFollowers = async () => {
     try {
@@ -86,7 +91,7 @@ export default function ProfilePage () {
     }
     
   }
-
+ 
   const getNFTs = async () => {
     try {
       setIsLoadingNFTs(true);
@@ -165,9 +170,15 @@ export default function ProfilePage () {
               </div>
               </Group>
 
-              
+                <Group>
+                
+                
+                
                 <UpdateProfile />
-             
+                <Space w={1}/>
+                <AddTwitch />
+                <Space w={1}/>
+             </Group>
               </Group>
             
             
@@ -219,6 +230,8 @@ export default function ProfilePage () {
             </Paper>
             <Space h="sm" />
 
+            
+
             <Center>
               {followerInfo.followers && followerInfo.followers.NumFollowers ? (
                 <Text fz="sm">
@@ -265,7 +278,11 @@ export default function ProfilePage () {
               </Group>
 
           <Space h="xl" />
-
+                {currentUser.ProfileEntryResponse?.ExtraData?.TwitchURL && (
+                  <Group grow>
+                     <TwitchEmbed channel={extractTwitchUsername(currentUser.ProfileEntryResponse?.ExtraData?.TwitchURL)} withChat darkMode={true} onVideoReady={handleReady} />
+                  </Group>
+                )}
           <Space h="sm"/>
           <Tabs radius="sm" defaultValue="first">
             <Tabs.List grow position="center">

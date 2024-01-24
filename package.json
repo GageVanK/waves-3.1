@@ -39,7 +39,7 @@
     "react-dom": "18.2.0",
     "react-dropzone": "^14.2.3",
     "react-icons": "^4.11.0",
-    "react-twitch-embed": "^3.0.1"
+    "react-twitch-embed": "^3.0.2"
   },
   "devDependencies": {
     "@babel/core": "^7.22.1",

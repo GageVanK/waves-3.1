@@ -81,7 +81,7 @@ export default function NotificationsPage () {
       
       setIsLoading(false); 
 
-      console.log(notifications)
+     
     } catch (error) {
       notifications.show({
         title: "Error",
