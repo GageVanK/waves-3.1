@@ -1,14 +1,7 @@
+import { useEffect, useState, useContext, useRef } from 'react';
 
-import { useEffect, useState, useContext, useRef} from "react";
-
-
-import { Player } from "@livepeer/react";
-import {
-  IconScreenShare,
-  IconCheck,
-  IconHeartHandshake,
-  IconX,
-} from "@tabler/icons-react";
+import { Player } from '@livepeer/react';
+import { IconScreenShare, IconCheck, IconHeartHandshake, IconX } from '@tabler/icons-react';
 import {
   getFollowersForUser,
   getPostsForUser,
@@ -19,7 +12,7 @@ import {
   identity,
   sendDeso,
   getExchangeRates,
-} from "deso-protocol";
+} from 'deso-protocol';
 import {
   Grid,
   Container,
@@ -46,18 +39,18 @@ import {
   Collapse,
   UnstyledButton,
   List,
-} from "@mantine/core";
-import { notifications } from "@mantine/notifications";
-import { DeSoIdentityContext } from "react-deso-protocol";
-import { RiUserUnfollowLine } from "react-icons/ri";
-import { useDisclosure } from "@mantine/hooks";
-import { useRouter } from 'next/router'
+} from '@mantine/core';
+import { notifications } from '@mantine/notifications';
+import { DeSoIdentityContext } from 'react-deso-protocol';
+import { RiUserUnfollowLine } from 'react-icons/ri';
+import { useDisclosure } from '@mantine/hooks';
+import { useRouter } from 'next/router';
 import { Chat } from '@/components/Chat';
 import classes from './wave.module.css';
-import Post from "@/components/Post";
-import { replaceURLs } from "../../helpers/linkHelper";
-import { SubscriptionModal } from "../../components/SubscriptionModal";
-import { extractTwitchUsername } from "@/helpers/linkHelper";
+import Post from '@/components/Post';
+import { replaceURLs } from '../../helpers/linkHelper';
+import { SubscriptionModal } from '../../components/SubscriptionModal';
+import { extractTwitchUsername } from '@/helpers/linkHelper';
 import { TwitchEmbed } from 'react-twitch-embed';
 
 export default function Wave() {
@@ -69,14 +62,14 @@ export default function Wave() {
   const [followerInfo, setFollowers] = useState({ followers: 0, following: 0 });
   const { currentUser } = useContext(DeSoIdentityContext);
   const [isFollowingUser, setisFollowingUser] = useState(false);
-  const [selectedImage, setSelectedImage] = useState("");
+  const [selectedImage, setSelectedImage] = useState('');
   const [opened, { open, close }] = useDisclosure(false);
   const [isLoadingPosts, setIsLoadingPosts] = useState(false);
   const [isLoadingNFTs, setIsLoadingNFTs] = useState(false);
   const [openedChat, { toggle }] = useDisclosure(true);
-  const [livestreamPost, setLivestreamPost] = useState(null); 
+  const [livestreamPost, setLivestreamPost] = useState(null);
   const [isLoadingLivestream, setIsLoadingLivestream] = useState(false);
-  const embed = useRef(); 
+  const embed = useRef();
 
   const handleReady = (e) => {
     embed.current = e;
@@ -86,7 +79,7 @@ export default function Wave() {
     const playbackId = match ? match[1] : null;
     return playbackId;
   };
- 
+
   // Get Profile
   const fetchProfile = async () => {
     try {
@@ -94,14 +87,13 @@ export default function Wave() {
         Username: userName,
         NoErrorOnMissing: true,
       });
-      
+
       setProfile(profileData.Profile);
-    
     } catch (error) {
-      console.error("Error fetching user profile:", error);
+      console.error('Error fetching user profile:', error);
     }
   };
- 
+
   // Get Follow Counts
   const fetchFollowerInfo = async () => {
     try {
@@ -115,11 +107,10 @@ export default function Wave() {
 
       setFollowers({ following, followers });
     } catch (error) {
-      console.error("Error fetching follower information:", error);
+      console.error('Error fetching follower information:', error);
     }
   };
 
-  
   // Get For Sale NFTs
   const fetchNFTs = async (limit) => {
     try {
@@ -128,7 +119,7 @@ export default function Wave() {
         UserPublicKeyBase58Check: profile.PublicKeyBase58Check,
         IsForSale: true,
       });
-      
+
       const nftKeys = Object.keys(nftData.NFTsMap);
       const limitedNFTKeys = nftKeys.slice(0, limit);
 
@@ -140,7 +131,7 @@ export default function Wave() {
       setNFTs(limitedNFTs);
       setIsLoadingNFTs(false);
     } catch (error) {
-      console.error("Error fetching user NFTs:", error);
+      console.error('Error fetching user NFTs:', error);
     }
   };
 
@@ -154,127 +145,110 @@ export default function Wave() {
       });
       setPosts(postData.Posts);
       setIsLoadingPosts(false);
-
     } catch (error) {
-      console.error("Error fetching user posts:", error);
+      console.error('Error fetching user posts:', error);
     }
   };
-
- 
 
   // Get if Current User follows profile
   const getIsFollowingData = async () => {
     try {
-      
       const req = {
         PublicKeyBase58Check: currentUser?.PublicKeyBase58Check,
         IsFollowingPublicKeyBase58Check: profile?.PublicKeyBase58Check,
-      }
+      };
 
       const result = await getIsFollowing(req);
       setisFollowingUser(result.IsFollowing);
-     
-    
     } catch (error) {
-      console.error("Error checking if following:", error);
-    } 
+      console.error('Error checking if following:', error);
+    }
   };
-
-  
 
   // Function to Follow userName
   const followUser = async () => {
     try {
-      
-      
-            await updateFollowingStatus({
-              MinFeeRateNanosPerKB: 1000,
-              IsUnfollow: false,
-              FollowedPublicKeyBase58Check: profile?.PublicKeyBase58Check,
-              FollowerPublicKeyBase58Check: currentUser?.PublicKeyBase58Check,
-            });
-            getIsFollowingData();
-            notifications.show({
-              title: "Success",
-              icon: <IconCheck size="1.1rem" />,
-              color: "green",
-              message: `You successfully followed ${userName}`,
-            }); 
-         
-        } catch (error) {
-            notifications.show({
-              title: "Error",
-              icon: <IconX size="1.1rem" />,
-              color: "red",
-              message: `Something Happened: ${error}`,
-            });
-          
-          }
+      await updateFollowingStatus({
+        MinFeeRateNanosPerKB: 1000,
+        IsUnfollow: false,
+        FollowedPublicKeyBase58Check: profile?.PublicKeyBase58Check,
+        FollowerPublicKeyBase58Check: currentUser?.PublicKeyBase58Check,
+      });
+      getIsFollowingData();
+      notifications.show({
+        title: 'Success',
+        icon: <IconCheck size="1.1rem" />,
+        color: 'green',
+        message: `You successfully followed ${userName}`,
+      });
+    } catch (error) {
+      notifications.show({
+        title: 'Error',
+        icon: <IconX size="1.1rem" />,
+        color: 'red',
+        message: `Something Happened: ${error}`,
+      });
+    }
   };
 
   // Function to Unfollow userName
   const unfollowUser = async () => {
     try {
-    await updateFollowingStatus({
-      MinFeeRateNanosPerKB: 1000,
-      IsUnfollow: true,
-      FollowedPublicKeyBase58Check: profile?.PublicKeyBase58Check,
-      FollowerPublicKeyBase58Check: currentUser?.PublicKeyBase58Check,
-    });
-    getIsFollowingData();
-    notifications.show({
-      title: "Success",
-      icon: <IconCheck size="1.1rem" />,
-      color: "red",
-      message: `You successfully unfollowed ${userName}`,
-    });
-  } catch (error) {
-    notifications.show({
-      title: "Error",
-      icon: <IconX size="1.1rem" />,
-      color: "red",
-      message: "Something Happened!",
-    });
-   
-  }
+      await updateFollowingStatus({
+        MinFeeRateNanosPerKB: 1000,
+        IsUnfollow: true,
+        FollowedPublicKeyBase58Check: profile?.PublicKeyBase58Check,
+        FollowerPublicKeyBase58Check: currentUser?.PublicKeyBase58Check,
+      });
+      getIsFollowingData();
+      notifications.show({
+        title: 'Success',
+        icon: <IconCheck size="1.1rem" />,
+        color: 'red',
+        message: `You successfully unfollowed ${userName}`,
+      });
+    } catch (error) {
+      notifications.show({
+        title: 'Error',
+        icon: <IconX size="1.1rem" />,
+        color: 'red',
+        message: 'Something Happened!',
+      });
+    }
   };
 
   // Getting userName's most recent Wave livestream
   const fetchLivestreamPost = async () => {
     try {
       setIsLoadingLivestream(true);
-  
+
       const postData = await getPostsForUser({
         Username: userName,
         NumToFetch: 20,
       });
-  
-      const livestreamPost = postData.Posts.find(
-        (post) => post.PostExtraData?.WavesStreamTitle
-      );
-  
+
+      const livestreamPost = postData.Posts.find((post) => post.PostExtraData?.WavesStreamTitle);
+
       setLivestreamPost(livestreamPost);
-      
+
       setIsLoadingLivestream(false);
     } catch (error) {
-      console.error("Error fetching livestream post:", error);
+      console.error('Error fetching livestream post:', error);
     }
   };
 
-
   useEffect(() => {
-    if(userName) {
-      fetchPosts(); 
+    if (userName) {
+      fetchPosts();
       fetchLivestreamPost();
       fetchProfile();
       fetchFollowerInfo();
     }
-   
   }, [userName]);
 
   useEffect(() => {
-    if(profile.PublicKeyBase58Check) {
-    fetchNFTs(25); 
+    if (profile.PublicKeyBase58Check) {
+      fetchNFTs(25);
     }
   }, [profile.PublicKeyBase58Check]);
 
@@ -283,7 +257,6 @@ export default function Wave() {
       getIsFollowingData();
     }
   }, [currentUser?.PublicKeyBase58Check, profile?.PublicKeyBase58Check]);
-  
 
   return (
     <>
@@ -291,95 +264,88 @@ export default function Wave() {
         <Card.Section>
           <Image
             src={profile?.ExtraData?.FeaturedImageURL || null}
-       
             fallbackSrc="https://images.deso.org/4903a46ab3761c5d8bd57416ff411ff98b24b35fcf5480dde039eb9bae6eebe0.webp"
             height={321}
-
           />
         </Card.Section>
 
         <Group>
           <>
-          <Avatar
-            
-            src={
-              profile?.ExtraData?.LargeProfilePicURL || `https://node.deso.org/api/v0/get-single-profile-picture/${profile?.PublicKeyBase58Check}` ||
-              null
-            }
-            alt="Profile Picture"
-            className={classes.avatar}
-            size={123}
-            radius="md"
-            mt={-55}
-          />
-        
-        </>
-        <div>
-
-        
-          {profile !== null ? (
-            <>
-              <Text className={classes.Avatar} fw={500}>
-                {profile?.ExtraData?.DisplayName || userName}
+            <Avatar
+              src={
+                profile?.ExtraData?.LargeProfilePicURL ||
+                `https://node.deso.org/api/v0/get-single-profile-picture/${profile?.PublicKeyBase58Check}` ||
+                null
+              }
+              alt="Profile Picture"
+              className={classes.avatar}
+              size={123}
+              radius="md"
+              mt={-55}
+            />
+          </>
+          <div>
+            {profile !== null ? (
+              <>
+                <Text className={classes.Avatar} fw={500}>
+                  {profile?.ExtraData?.DisplayName || userName}
+                </Text>
+                <Text size="xs" className={classes.Avatar} tt="lowercase">
+                  @{userName}
+                </Text>
+              </>
+            ) : (
+              <Text fz="lg" fw={777} truncate="end">
+                User does not exist
               </Text>
-              <Text size="xs" className={classes.Avatar} tt="lowercase">
-                @{userName}
-              </Text>
-            </>
-          ) : (
-            <Text fz="lg" fw={777} truncate="end">
-              User does not exist
-            </Text>
-          )}
-       
-        </div>
+            )}
+          </div>
         </Group>
 
         <Space h="md" />
         <Card.Section>
-        {profile.ExtraData?.TwitchURL ? (
-      <Group grow>
-        <TwitchEmbed channel={extractTwitchUsername(profile.ExtraData?.TwitchURL)} withChat darkMode={true} onVideoReady={handleReady} />
-      </Group>
-    ) : (
-      <>
-          {livestreamPost ? (
-            <>
-           
-
-           <Player
-
-              priority 
-              controls
-              showPipButton
-              theme={{
-                  colors: {
-                    loading: '#3cdfff',
-                  }
-                }}
-              playbackId={extractPlaybackId(livestreamPost.VideoURLs[0])}
-              title={livestreamPost.ExtraData?.WavesStreamTitle}
-              
-            />
-            
-            </>
-            
+          {profile.ExtraData?.TwitchURL ? (
+            <Group grow>
+              <TwitchEmbed
+                channel={extractTwitchUsername(profile.ExtraData?.TwitchURL)}
+                withChat
+                darkMode={true}
+                onVideoReady={handleReady}
+              />
+            </Group>
           ) : (
-            <Divider
-              my="xs"
-              label={
+            <>
+              {livestreamPost ? (
                 <>
-                  <Paper radius="sm" p="md" withBorder>
-                    <Text c="dimmed" fw={500} fs="md">
-                      Not live right now.
-                    </Text>
-                  </Paper>
+                  <Player
+                    priority
+                    controls
+                    showPipButton
+                    theme={{
+                      colors: {
+                        loading: '#3cdfff',
+                      },
+                    }}
+                    playbackId={extractPlaybackId(livestreamPost.VideoURLs[0])}
+                    title={livestreamPost.ExtraData?.WavesStreamTitle}
+                  />
                 </>
-              }
-              labelPosition="center"
-            />
-          )}
-          </>
+              ) : (
+                <Divider
+                  my="xs"
+                  label={
+                    <>
+                      <Paper radius="sm" p="md" withBorder>
+                        <Text c="dimmed" fw={500} fs="md">
+                          Not live right now.
+                        </Text>
+                      </Paper>
+                    </>
+                  }
+                  labelPosition="center"
+                />
+              )}
+            </>
           )}
         </Card.Section>
         <Space h="md" />
@@ -388,30 +354,23 @@ export default function Wave() {
 
         <Paper shadow="xl" radius="md" p="xl">
           <Group>
-            <CopyButton
-              value={`https://desowaves.vercel.app/wave/${userName}`}
-              timeout={2000}
-            >
+            <CopyButton value={`https://desowaves.vercel.app/wave/${userName}`} timeout={2000}>
               {({ copied, copy }) => (
-                <Button
-                  size="sm"
-                  color={copied ? "teal" : "blue"}
-                  onClick={copy}
-                >
-                  {copied ? (
-                    <>
-                      <Tooltip label="Copied Wave">
-                        <IconCheck size={16} />
-                      </Tooltip>
-                    </>
-                  ) : (
-                    <>
-                      <Tooltip label="Share their Wave with this Link">
-                        <IconScreenShare size={16} />
-                      </Tooltip>
-                    </>
-                  )}
-                </Button>
+                <>
+                  <Tooltip label={copied ? 'Wave Copied' : `Share ${userName}'s Wave`}>
+                    <Button radius="sm" size="sm" color={copied ? 'teal' : 'blue'} onClick={copy}>
+                      {copied ? (
+                        <>
+                          <IconCheck size={16} />
+                        </>
+                      ) : (
+                        <>
+                          <IconScreenShare size={16} />
+                        </>
+                      )}
+                    </Button>
+                  </Tooltip>
+                </>
               )}
             </CopyButton>
 
@@ -421,16 +380,16 @@ export default function Wave() {
           <Text
             fz="sm"
             style={{
-              maxWidth: "100%",
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              whiteSpace: "wrap",
+              maxWidth: '100%',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'wrap',
             }}
             dangerouslySetInnerHTML={{
               __html:
                 profile && profile.Description
-                  ? replaceURLs(profile.Description.replace(/\n/g, "<br>"))
-                  : "",
+                  ? replaceURLs(profile.Description.replace(/\n/g, '<br>'))
+                  : '',
             }}
           />
         </Paper>
@@ -439,9 +398,7 @@ export default function Wave() {
 
         <Center>
           {followerInfo.followers && followerInfo.followers.NumFollowers ? (
-            <Text fz="sm">
-              Followers: {followerInfo.followers.NumFollowers}
-            </Text>
+            <Text fz="sm">Followers: {followerInfo.followers.NumFollowers}</Text>
           ) : (
             <Text fz="sm">Followers: 0</Text>
           )}
@@ -450,9 +407,7 @@ export default function Wave() {
           <Divider size="sm" orientation="vertical" />
           <Space w="sm" />
           {followerInfo.following && followerInfo.following.NumFollowers ? (
-            <Text fz="sm">
-              Following: {followerInfo.following.NumFollowers}
-            </Text>
+            <Text fz="sm">Following: {followerInfo.following.NumFollowers}</Text>
           ) : (
             <Text fz="sm">Following: 0</Text>
           )}
@@ -465,24 +420,13 @@ export default function Wave() {
               <Button
                 fullWidth
                 variant="gradient"
-                gradient={{ from: "cyan", to: "indigo" }}
+                gradient={{ from: 'cyan', to: 'indigo' }}
                 className={classes.button}
               >
                 Following
               </Button>
-              <Tooltip
-                label="Unfollow User"
-                
-                withArrow
-                arrowPosition="center"
-              >
-                <ActionIcon
-                  variant="filled"
-                  color="indigo"
-                  size={36}
-                 
-                  onClick={unfollowUser}
-                >
+              <Tooltip label="Unfollow User" withArrow arrowPosition="center">
+                <ActionIcon variant="filled" color="indigo" size={36} onClick={unfollowUser}>
                   <RiUserUnfollowLine size="1rem" stroke={1.5} />
                 </ActionIcon>
               </Tooltip>
@@ -491,7 +435,7 @@ export default function Wave() {
             <Button
               fullWidth
               variant="gradient"
-              gradient={{ from: "cyan", to: "indigo" }}
+              gradient={{ from: 'cyan', to: 'indigo' }}
               radius="md"
               onClick={followUser}
             >
@@ -502,7 +446,7 @@ export default function Wave() {
           <Button
             fullWidth
             variant="gradient"
-            gradient={{ from: "cyan", to: "indigo" }}
+            gradient={{ from: 'cyan', to: 'indigo' }}
             radius="md"
             onClick={() => identity.login()}
           >
@@ -511,34 +455,22 @@ export default function Wave() {
         )}
       </Card>
 
-      <Space h="sm"/>
-            <Center>
-              <Button variant="light" hiddenFrom="md" onClick={toggle}>
-               {openedChat ? (
-                <>
-                Close Chat
-                </>
-               ):(
-                <>
-                Open Chat
-                </>
-               )}
+      <Space h="sm" />
+      <Center>
+        <Button variant="light" hiddenFrom="md" onClick={toggle}>
+          {openedChat ? <>Close Chat</> : <>Open Chat</>}
+        </Button>
+      </Center>
+      <Group justify="center" hiddenFrom="md">
+        <Collapse transitionDuration={1000} transitionTimingFunction="smooth" in={openedChat}>
+          <Chat handle={userName || 'Anon'} />
+        </Collapse>
+      </Group>
 
-              </Button>
-            </Center>
-              <Group justify="center" hiddenFrom="md">
-
-                <Collapse transitionDuration={1000} transitionTimingFunction="smooth" in={openedChat}>
-                  <Chat handle={userName || "Anon"} />
-                </Collapse>
-
-              </Group>
-
-          <Space h="xl" />
-       
+      <Space h="xl" />
 
       <Tabs variant="default" defaultValue="first">
-        <Tabs.List grow >
+        <Tabs.List grow>
           <Tabs.Tab value="first">
             <Text fz="sm">Posts</Text>
           </Tabs.Tab>
@@ -549,75 +481,71 @@ export default function Wave() {
         </Tabs.List>
 
         <Tabs.Panel value="first">
-        {isLoadingPosts ? (
-  <>
-    <Space h="md"/>
-    <Center>
-      <Loader variant="bars" />
-    </Center>
-  </>
-) : (
-  posts && posts.length > 0 ? (
-    posts.map((post) => (
-      <Post post={post} username={userName} key={post.PostHashHex}/>
-    ))
-  ) : (
-    // If no NFTs, show the Badge
-    <>
-      <Space h="md"/>
-      <Center>
-        <Badge
-          size="md"
-          radius="sm"
-          variant="gradient"
-          gradient={{ from: "indigo", to: "cyan", deg: 45 }}
-        >
-          Post something to view them here!
-        </Badge>
-      </Center>
-    </>
-  )
-)}
+          {isLoadingPosts ? (
+            <>
+              <Space h="md" />
+              <Center>
+                <Loader variant="bars" />
+              </Center>
+            </>
+          ) : posts && posts.length > 0 ? (
+            posts.map((post) => <Post post={post} username={userName} key={post.PostHashHex} />)
+          ) : (
+            // If no NFTs, show the Badge
+            <>
+              <Space h="md" />
+              <Center>
+                <Badge
+                  size="md"
+                  radius="sm"
+                  variant="gradient"
+                  gradient={{ from: 'indigo', to: 'cyan', deg: 45 }}
+                >
+                  Post something to view them here!
+                </Badge>
+              </Center>
+            </>
+          )}
 
-                   <Space h={222} />
-
+          <Space h={222} />
         </Tabs.Panel>
-        
+
         <Tabs.Panel value="second">
-        {isLoadingNFTs ? (
-  <>
-    <Space h="md"/>
-    <Center>
-      <Loader variant="bars" />
-    </Center>
-  </>
-) : (
-  // After loading, check if there are NFTs to display
-  NFTs && Object.keys(NFTs).length > 0 ? (
-    Object.keys(NFTs).map((key, index) => {
-      const nft = NFTs[key];
-      return (
-        <Post post={nft.PostEntryResponse} username={nft.PostEntryResponse.ProfileEntryResponse.Username} key={nft.PostEntryResponse.PostHashHex}/>
-      );
-    })
-  ) : (
-    // If no NFTs, show the Badge
-    <>
-      <Space h="md"/>
-      <Center>
-        <Badge
-          size="md"
-          radius="sm"
-          variant="gradient"
-          gradient={{ from: "indigo", to: "cyan", deg: 45 }}
-        >
-          Mint something to view them here!
-        </Badge>
-      </Center>
-    </>
-  )
-)}
-        
+          {isLoadingNFTs ? (
+            <>
+              <Space h="md" />
+              <Center>
+                <Loader variant="bars" />
+              </Center>
+            </>
+          ) : // After loading, check if there are NFTs to display
+          NFTs && Object.keys(NFTs).length > 0 ? (
+            Object.keys(NFTs).map((key, index) => {
+              const nft = NFTs[key];
+              return (
+                <Post
+                  post={nft.PostEntryResponse}
+                  username={nft.PostEntryResponse.ProfileEntryResponse.Username}
+                  key={nft.PostEntryResponse.PostHashHex}
+                />
+              );
+            })
+          ) : (
+            // If no NFTs, show the Badge
+            <>
+              <Space h="md" />
+              <Center>
+                <Badge
+                  size="md"
+                  radius="sm"
+                  variant="gradient"
+                  gradient={{ from: 'indigo', to: 'cyan', deg: 45 }}
+                >
+                  Mint something to view them here!
+                </Badge>
+              </Center>
+            </>
+          )}
         </Tabs.Panel>
       </Tabs>
 
@@ -626,4 +554,4 @@ export default function Wave() {
       </Modal>
     </>
   );
-};
+}
