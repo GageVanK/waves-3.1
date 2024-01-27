@@ -68,7 +68,7 @@ configure({
 
 const livepeerClient = createReactClient({
   provider: studioProvider({
-    apiKey: '3c846b17-e5c3-4b26-ac33-b4b476f13e7f',
+    apiKey: '2de206a0-998b-45ed-bfa9-4e83b50cdcb7',
   }),
 });
 

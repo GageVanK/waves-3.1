@@ -708,7 +708,7 @@ export default function Post({ post, username, key }) {
                       {post.ProfileEntryResponse?.ExtraData?.DisplayName || username}
                     </Text>
                   </Box>
-                  <Text size="xs" tt="lowercase" truncate="end">
+                  <Text size="xs" truncate="end">
                     @{username}
                   </Text>
                 </div>
@@ -755,7 +755,7 @@ export default function Post({ post, username, key }) {
                   {post.ProfileEntryResponse?.ExtraData?.DisplayName || username}
                 </Text>
               </Box>
-              <Text size="xs" tt="lowercase" truncate="end">
+              <Text size="xs" truncate="end">
                 @{username}
               </Text>
 
