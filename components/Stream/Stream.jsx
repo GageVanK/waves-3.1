@@ -366,7 +366,7 @@ export const Stream = () => {
                       >
                         <Text fw={400} fs="italic">
                           1. Select Livepeer Studio in your OBS Stream Settings and paste in your
-                          Stream Key
+                          1-time use Stream Key
                         </Text>
                         <Space h="xs" />
                         <Text fw={400} fs="italic">

@@ -290,7 +290,7 @@ export default function Wave() {
                 <Text className={classes.Avatar} fw={500}>
                   {profile?.ExtraData?.DisplayName || userName}
                 </Text>
-                <Text size="xs" className={classes.Avatar} tt="lowercase">
+                <Text size="xs" className={classes.Avatar}>
                   @{userName}
                 </Text>
               </>
@@ -304,32 +304,32 @@ export default function Wave() {
 
         <Space h="md" />
         <Card.Section>
-          {profile.ExtraData?.TwitchURL ? (
-            <Group grow>
-              <TwitchEmbed
-                channel={extractTwitchUsername(profile.ExtraData?.TwitchURL)}
-                withChat
-                darkMode={true}
-                onVideoReady={handleReady}
+          {livestreamPost ? (
+            <>
+              <Player
+                priority
+                controls
+                showPipButton
+                theme={{
+                  colors: {
+                    loading: '#3cdfff',
+                  },
+                }}
+                playbackId={extractPlaybackId(livestreamPost.VideoURLs[0])}
+                title={livestreamPost.ExtraData?.WavesStreamTitle}
               />
-            </Group>
+            </>
           ) : (
             <>
-              {livestreamPost ? (
-                <>
-                  <Player
-                    priority
-                    controls
-                    showPipButton
-                    theme={{
-                      colors: {
-                        loading: '#3cdfff',
-                      },
-                    }}
-                    playbackId={extractPlaybackId(livestreamPost.VideoURLs[0])}
-                    title={livestreamPost.ExtraData?.WavesStreamTitle}
+              {profile.ExtraData?.TwitchURL ? (
+                <Group grow>
+                  <TwitchEmbed
+                    channel={extractTwitchUsername(profile.ExtraData?.TwitchURL)}
+                    withChat
+                    darkMode={true}
+                    onVideoReady={handleReady}
                   />
-                </>
+                </Group>
               ) : (
                 <Divider
                   my="xs"
