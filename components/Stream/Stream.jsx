@@ -6,7 +6,7 @@ import {
   useStreamSession,
 } from '@livepeer/react';
 import { useMemo, useState, useContext, useEffect, useRef } from 'react';
-import { useDisclosure } from '@mantine/hooks';
+import { useDisclosure, useInterval } from '@mantine/hooks';
 import {
   updateProfile,
   getIsFollowing,
@@ -39,7 +39,7 @@ import {
   UnstyledButton,
   ActionIcon,
   PasswordInput,
-  Switch,
+  rgba,
   HoverCard,
   Blockquote,
   Container,
@@ -60,7 +60,6 @@ import {
 import { notifications } from '@mantine/notifications';
 import { RiYoutubeLine } from 'react-icons/ri';
 import { BsTwitch } from 'react-icons/bs';
-import { useInterval } from '@mantine/hooks';
 import { DeSoIdentityContext } from 'react-deso-protocol';
 import { RiKickLine } from 'react-icons/ri';
 import { AiOutlineLink } from 'react-icons/ai';
@@ -82,8 +81,10 @@ export const Stream = () => {
   const [progress, setProgress] = useState(0);
   const [loaded, setLoaded] = useState(false);
   const [activeTab, setActiveTab] = useState('first');
+  const [didLaunch, setDidLaunch] = useState(false);
   const [openedMulti, { toggle: toggleMulti }] = useDisclosure(true);
   const embed = useRef();
+  const theme = useMantineTheme();
 
   const handleReady = (e) => {
     embed.current = e;
@@ -233,7 +234,7 @@ export const Stream = () => {
 
   const postStreamToDeso = async () => {
     try {
-      setIsButtonDisabled(true);
+      !interval.active && interval.start();
 
       // Waves_Streams follows Streamers
       // Will be using the Waves_Streams Following Feed to display the livestreams on the Waves Feed
@@ -266,6 +267,8 @@ export const Stream = () => {
         color: 'green',
         message: 'Your Wave has Launched to DeSo',
       });
+
+      setDidLaunch(true);
     } catch (error) {
       notifications.show({
         title: 'Error',
@@ -274,7 +277,10 @@ export const Stream = () => {
         message: `Something Happened: ${error}`,
       });
       console.log('something happened: ' + error);
-      setIsButtonDisabled(false);
+
+      setDidLaunch(false);
+      setLoaded(false);
+      setProgress(0);
     }
   };
 
@@ -366,12 +372,18 @@ export const Stream = () => {
                       >
                         <Text fw={400} fs="italic">
                           1. Select Livepeer Studio in your OBS Stream Settings and paste in your
-                          1-time use Stream Key
+                          1-time use Stream Key.
                         </Text>
                         <Space h="xs" />
                         <Text fw={400} fs="italic">
                           2. Once your stream is Active, Click 'Launch Wave' to bring your broadcast
                           to Waves & all DeSo Apps!
+                        </Text>
+                        <Space h="xs" />
+                        <Text fw={400} fs="italic">
+                          - If you leave the dashboard mid-stream, your viewers can still watch the
+                          stream, but you won't have access to the stream key or be able to start a
+                          multistream until you create a new one.
                         </Text>
                       </Blockquote>
 
@@ -419,9 +431,24 @@ export const Stream = () => {
                           onClick={() => {
                             postStreamToDeso();
                           }}
-                          color={'blue'}
+                          color={loaded ? 'teal' : theme.primaryColor}
+                          disabled={didLaunch}
                         >
-                          Launch Wave
+                          <div className={classes.label}>
+                            {progress !== 0
+                              ? 'Launching Waves'
+                              : loaded
+                              ? 'Wave Launched'
+                              : 'Launch Wave'}
+                          </div>
+                          {progress !== 0 && (
+                            <Progress
+                              value={progress}
+                              className={classes.progress}
+                              color={rgba(theme.colors.blue[0], 0.35)}
+                              radius="sm"
+                            />
+                          )}
                         </Button>
                       </Group>
                       <Space h="md" />
@@ -619,19 +646,38 @@ export const Stream = () => {
                   </Collapse>
 
                   <Space h="md" />
-                  <Blockquote
-                    color="blue"
-                    radius="xl"
-                    iconSize={30}
-                    icon={<BsExclamationCircle size="1.2rem" />}
-                    mt="xl"
-                  >
-                    <Text fw={400} fs="italic">
-                      This stream playback is not public. Please click Launch Wave to make it
-                      accessible across all DeSo Apps.
-                    </Text>
-                  </Blockquote>
-                  <Space h="md" />
+                  {!didLaunch ? (
+                    <>
+                      <Blockquote
+                        color="red"
+                        radius="xl"
+                        iconSize={30}
+                        icon={<BsExclamationCircle size="1.2rem" />}
+                        mt="xl"
+                      >
+                        <Text fw={400} fs="italic">
+                          This stream playback is not public. Please click Launch Wave to make it
+                          accessible across all DeSo Apps.
+                        </Text>
+                      </Blockquote>
+                      <Space h="md" />
+                    </>
+                  ) : (
+                    <>
+                      <Blockquote
+                        color="blue"
+                        radius="xl"
+                        iconSize={30}
+                        icon={<BsExclamationCircle size="1.2rem" />}
+                        mt="xl"
+                      >
+                        <Text fw={400} fs="italic">
+                          Yay! Your wave is available on Waves and all DeSo Apps!
+                        </Text>
+                      </Blockquote>
+                      <Space h="md" />
+                    </>
+                  )}
                   <Group justify="center">
                     <Player
                       priority

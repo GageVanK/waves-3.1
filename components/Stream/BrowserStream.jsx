@@ -17,8 +17,8 @@ import {
   Button,
   Space,
   Center,
-  CopyButton,
-  Tabs,
+  useMantineTheme,
+  rgba,
   Tooltip,
   Card,
   Badge,
@@ -78,6 +78,8 @@ export function BrowserStream() {
   const [activeTab, setActiveTab] = useState('first');
   const [openedMulti, { toggle: toggleMulti }] = useDisclosure(true);
   const embed = useRef();
+  const [didLaunch, setDidLaunch] = useState(false);
+  const theme = useMantineTheme();
 
   const handleReady = (e) => {
     embed.current = e;
@@ -227,7 +229,7 @@ export function BrowserStream() {
 
   const postStreamToDeso = async () => {
     try {
-      setIsButtonDisabled(true);
+      !interval.active && interval.start();
       // Streamer follows the Waves_Streams Account
       // Waves_Streams follows Streamers back
       // Will be using the Waves_Streams Following Feed to display the livestreams on the Waves Feed
@@ -260,6 +262,8 @@ export function BrowserStream() {
         color: 'green',
         message: 'Your Wave has Launched to DeSo',
       });
+
+      setDidLaunch(true);
     } catch (error) {
       notifications.show({
         title: 'Error',
@@ -268,7 +272,9 @@ export function BrowserStream() {
         message: `Something Happened: ${error}`,
       });
       console.log('something happened: ' + error);
-      setIsButtonDisabled(false);
+      setDidLaunch(false);
+      setLoaded(false);
+      setProgress(0);
     }
   };
 
@@ -330,8 +336,24 @@ export function BrowserStream() {
                       onClick={() => {
                         postStreamToDeso();
                       }}
+                      color={loaded ? 'teal' : theme.primaryColor}
+                      disabled={didLaunch}
                     >
-                      Launch Wave
+                      <div className={classes.label}>
+                        {progress !== 0
+                          ? 'Launching Waves'
+                          : loaded
+                          ? 'Wave Launched'
+                          : 'Launch Wave'}
+                      </div>
+                      {progress !== 0 && (
+                        <Progress
+                          value={progress}
+                          className={classes.progress}
+                          color={rgba(theme.colors.blue[0], 0.35)}
+                          radius="sm"
+                        />
+                      )}
                     </Button>
                   </Group>
 
@@ -523,19 +545,38 @@ export function BrowserStream() {
               </Collapse>
 
               <Space h="md" />
-              <Blockquote
-                color="blue"
-                radius="xl"
-                iconSize={30}
-                icon={<BsExclamationCircle size="1.2rem" />}
-                mt="xl"
-              >
-                <Text fw={400} fs="italic">
-                  This stream playback is not public. Please click Launch Wave to make it accessible
-                  across all DeSo Apps.
-                </Text>
-              </Blockquote>
-              <Space h="md" />
+              {!didLaunch ? (
+                <>
+                  <Blockquote
+                    color="red"
+                    radius="xl"
+                    iconSize={30}
+                    icon={<BsExclamationCircle size="1.2rem" />}
+                    mt="xl"
+                  >
+                    <Text fw={400} fs="italic">
+                      This stream playback is not public. Please click Launch Wave to make it
+                      accessible across all DeSo Apps.
+                    </Text>
+                  </Blockquote>
+                  <Space h="md" />
+                </>
+              ) : (
+                <>
+                  <Blockquote
+                    color="blue"
+                    radius="xl"
+                    iconSize={30}
+                    icon={<BsExclamationCircle size="1.2rem" />}
+                    mt="xl"
+                  >
+                    <Text fw={400} fs="italic">
+                      Yay! Your wave is available on Waves and all DeSo Apps!
+                    </Text>
+                  </Blockquote>
+                  <Space h="md" />
+                </>
+              )}
               <Group justify="center">
                 <Broadcast title={stream?.name} streamKey={stream.streamKey} muted />
               </Group>
