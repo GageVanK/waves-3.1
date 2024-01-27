@@ -336,7 +336,7 @@ export function MantineNavBar() {
         <Space h="sm" />
         {wavesFeed && wavesFeed.length > 0 ? (
           wavesFeed.map((post) => (
-            <HoverCard width={333} shadow="md" position="right">
+            <HoverCard width={300} shadow="md" position="right">
               <HoverCard.Target>
                 <UnstyledButton
                   component={Link}
