@@ -50,7 +50,7 @@ import {
   IconDiamondFilled,
   IconHeartBroken,
 } from '@tabler/icons-react';
-import { Player } from '@livepeer/react';
+import { Player, useAssetMetrics } from '@livepeer/react';
 import { useDisclosure, useHover } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
 import { BsChatQuoteFill, BsInfoCircleFill } from 'react-icons/bs';
@@ -681,7 +681,7 @@ export default function Post({ post, username, key }) {
 
         <Space h="sm" />
         <Group justify="center" style={{ display: 'flex', alignItems: 'center' }}>
-          <HoverCard width={333} shadow="md">
+          <HoverCard width={333} shadow="md" position="right">
             <HoverCard.Target>
               <UnstyledButton
                 component={Link}
