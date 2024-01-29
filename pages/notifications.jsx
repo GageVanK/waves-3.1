@@ -11,14 +11,21 @@ import {
   Button,
   UnstyledButton,
   Notification,
+  Tabs,
+  Box,
   ActionIcon,
-  Badge
-} from "@mantine/core";
-import { useState, useContext, useEffect } from "react";
-import { DeSoIdentityContext } from "react-deso-protocol";
-import { getNotifications, getSingleProfile, identity, getAppState, getUnreadNotificationsCount } from "deso-protocol";
+} from '@mantine/core';
+import { useState, useContext, useEffect } from 'react';
+import { DeSoIdentityContext } from 'react-deso-protocol';
+import {
+  getNotifications,
+  getSingleProfile,
+  identity,
+  getAppState,
+  getUnreadNotificationsCount,
+} from 'deso-protocol';
 import Link from 'next/link';
-import { GiWaveCrest } from "react-icons/gi";
+import { GiWaveCrest, GiMoneyStack } from 'react-icons/gi';
 import {
   IconHeartPlus,
   IconHeart,
@@ -31,69 +38,130 @@ import {
   IconThumbUp,
   IconThumbUpFilled,
   IconCoinOff,
-  IconMoneybag
-} from "@tabler/icons-react";
-import { BiRepost } from "react-icons/bi";
+  IconMoneybag,
+  IconHeartFilled,
+} from '@tabler/icons-react';
+import { BiRepost } from 'react-icons/bi';
+import { TfiComments } from 'react-icons/tfi';
+import { HiOutlineUsers } from 'react-icons/hi2';
+import { AiOutlineUserAdd } from 'react-icons/ai';
+import { FaRegCommentDots } from 'react-icons/fa';
+import Post from '@/components/Post';
+import formatDate from '@/formatDate';
 
-
-export default function NotificationsPage () {
+export default function NotificationsPage() {
   const [isLoading, setIsLoading] = useState(false);
   const { currentUser } = useContext(DeSoIdentityContext);
   const [notifications, setNotifications] = useState([]);
   const userPublicKey = currentUser?.PublicKeyBase58Check;
   const [usd, setUSD] = useState(null);
 
-
-
-
-
   const fetchNotifications = async () => {
     try {
       setIsLoading(true);
       const notificationData = await getNotifications({
         PublicKeyBase58Check: userPublicKey,
-        NumToFetch: 100,
+        NumToFetch: 150,
         FetchStartIndex: -1,
       });
+      console.log(notificationData);
+      // Initialize an array to store matched notifications with related posts and profiles
+      const matchedNotifications = [];
 
-  // Iterate through the notifications and fetch the usernames
-  const updatedNotifications = await Promise.all(
-    notificationData.Notifications.map(async (notification) => {
-      const request = {
-        PublicKeyBase58Check: notification.Metadata.TransactorPublicKeyBase58Check,
-        NoErrorOnMissing: true,
-      };
-      const profileResponse = await getSingleProfile(request);
+      // Check if notifications is defined
+      if (notificationData.Notifications) {
+        // Iterate through Notifications while maintaining the original order
+        for (const notification of notificationData.Notifications) {
+          try {
+            // Get post hashes from the current notification
+            const parentPostHash =
+              notification.Metadata.SubmitPostTxindexMetadata?.ParentPostHashHex ||
+              notification.Metadata.BasicTransferTxindexMetadata?.PostHashHex;
+            const modifiedPostHash =
+              notification.Metadata.SubmitPostTxindexMetadata?.PostHashBeingModifiedHex;
+            const reactedPostHash =
+              notification.Metadata.LikeTxindexMetadata?.PostHashHex ||
+              notification.Metadata.CreatePostAssociationTxindexMetadata?.PostHashHex;
 
-      let username = 'anon'; // Default to 'anon' in case of an error
-      if (profileResponse && profileResponse.Profile && profileResponse.Profile.Username) {
-        username = profileResponse.Profile.Username;
+            // Check if the post has related notifications
+            if (parentPostHash || modifiedPostHash || reactedPostHash) {
+              const relatedParentPost = parentPostHash
+                ? notificationData.PostsByHash[parentPostHash]
+                : null;
+              const relatedModifiedPost = modifiedPostHash
+                ? notificationData.PostsByHash[modifiedPostHash]
+                : null;
+              const reactedPost = reactedPostHash
+                ? notificationData.PostsByHash[reactedPostHash]
+                : null;
+
+              // Find existing matchedNotification or create a new one
+              let matchedNotification = matchedNotifications.find(
+                (item) => item.notification === notification
+              );
+
+              if (!matchedNotification) {
+                matchedNotification = {
+                  notification,
+                  relatedParentPost: null,
+                  relatedModifiedPost: null,
+                  reactedPost: null,
+                  relatedProfiles: [],
+                };
+                matchedNotifications.push(matchedNotification);
+              }
+
+              // Add the posts to the matchedNotification
+              if (relatedParentPost) {
+                matchedNotification.relatedParentPost = relatedParentPost;
+              }
+              if (relatedModifiedPost) {
+                matchedNotification.relatedModifiedPost = relatedModifiedPost;
+              }
+              if (reactedPostHash) {
+                matchedNotification.reactedPost = reactedPost;
+              }
+            }
+
+            // Get the Transactor public key from the current notification's metadata
+            const transactorPublicKey =
+              notification.Metadata?.TransactorPublicKeyBase58Check || null;
+
+            // Get the transactor profile using the public key
+            const transactorProfile =
+              transactorPublicKey && notificationData.ProfilesByPublicKey[transactorPublicKey];
+
+            // Find existing matchedNotification or create a new one
+            let matchedNotification = matchedNotifications.find(
+              (item) => item.notification === notification
+            );
+
+            if (!matchedNotification) {
+              matchedNotification = {
+                notification,
+                transactorProfile: null, // Initialize with null
+              };
+              matchedNotifications.push(matchedNotification);
+            }
+
+            // Set the transactor profile in the matchedNotification
+            matchedNotification.transactorProfile = transactorProfile;
+          } catch (error) {
+            console.error('Error processing notification:', notification);
+            console.error('Error details:', error);
+          }
+        }
       }
 
-      return {
-        ...notification,
-        username,
-      };
-    })
-  );
-      
-      setNotifications(updatedNotifications);
-      
-      setIsLoading(false); 
-
-     
+      setNotifications(matchedNotifications);
+      setIsLoading(false);
+      // Now, matchedNotifications contains the notifications with related posts and profiles
+      console.log('Matched Notifications with Related Posts and Profiles:', matchedNotifications);
     } catch (error) {
-      notifications.show({
-        title: "Error",
-        icon: <IconX size="1.1rem" />,
-        color: "red",
-        message: "Something Happened!",
-      });
-      console.error("Error fetching user notifications:", error);
-      setIsLoading(false); 
+      console.error('Error fetching user notifications:', error);
+      setIsLoading(false);
     }
   };
-
 
   useEffect(() => {
     if (currentUser) {
@@ -101,15 +169,15 @@ export default function NotificationsPage () {
     }
   }, [currentUser]);
 
-
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const appState = await getAppState({ PublicKeyBase58Check: "BC1YLjYHZfYDqaFxLnfbnfVY48wToduQVHJopCx4Byfk4ovvwT6TboD" });
+        const appState = await getAppState({
+          PublicKeyBase58Check: 'BC1YLjYHZfYDqaFxLnfbnfVY48wToduQVHJopCx4Byfk4ovvwT6TboD',
+        });
         const desoUSD = appState?.USDCentsPerDeSoCoinbase / 100;
 
         setUSD(desoUSD);
-      
       } catch (error) {
         console.error('Error fetching app state:', error);
       }
@@ -134,8 +202,6 @@ export default function NotificationsPage () {
       return null;
     }
   };
-
-  
 
   return (
     <div>
@@ -167,17 +233,13 @@ export default function NotificationsPage () {
                   fullWidth
                   leftSection={<GiWaveCrest size="1rem" />}
                   variant="gradient"
-                  gradient={{ from: "cyan", to: "indigo" }}
+                  gradient={{ from: 'cyan', to: 'indigo' }}
                   onClick={() => identity.login()}
                 >
                   Sign Up
                 </Button>
                 <Space w="xs" />
-                <Button
-                  fullWidth
-                  variant="default"
-                  onClick={() => identity.login()}
-                >
+                <Button fullWidth variant="default" onClick={() => identity.login()}>
                   Sign In
                 </Button>
               </Center>
@@ -186,708 +248,1238 @@ export default function NotificationsPage () {
         </>
       )}
 
-      
-      
-
-        {currentUser && isLoading ? (
-           <Center>
-           <Loader variant="bars" />
-          </Center>
-          ) : (
-            notifications.map((notification, index) => (
+      {currentUser && (
+        <Container>
+          <Tabs variant="pills" radius="xl" defaultValue="All">
+            <Center>
+              <Tabs.List>
+                <Tabs.Tab value="All">All</Tabs.Tab>
+                <Tabs.Tab value="Follows" leftSection={<AiOutlineUserAdd size="1.3rem" />} />
+                <Tabs.Tab value="Mentions" leftSection={<IconAt size="1.3rem" />} />
+                <Tabs.Tab value="Reactions" leftSection={<IconHeartFilled size="1.3rem" />} />
+                <Tabs.Tab value="Comments" leftSection={<FaRegCommentDots size="1.3rem" />} />
+                <Tabs.Tab value="Diamonds" leftSection={<IconDiamond size="1.3rem" />} />
+                <Tabs.Tab value="Reposts" leftSection={<IconRecycle size="1.3rem" />} />
+                <Tabs.Tab value="CC" leftSection={<IconCoin size="1.3rem" />} />
+                <Tabs.Tab value="Sent" leftSection={<GiMoneyStack size="1.3rem" />} />
+              </Tabs.List>
+            </Center>
+            <Space h="sm" />
+            <Tabs.Panel value="All">
               <>
-                <Container key={index}>
-                    {notification.Metadata.TxnType === "CREATE_POST_ASSOCIATION" && notification.Metadata.CreatePostAssociationTxindexMetadata.AssociationValue === "LIKE" && (
-                      <>
-                      <Notification withCloseButton={false} withBorder radius="md" color='rgba(255, 25, 251, 1)' title={<><UnstyledButton component={Link} href={`/wave/${notification.username}`}>
-                      <Group style={{ width: "100%", flexGrow: 1 }}>
-                        <Avatar
-                          size="md"
-                          src={
-                            `https://node.deso.org/api/v0/get-single-profile-picture/${notification.Metadata.TransactorPublicKeyBase58Check}` ||
-                            null
-                          }
-                        />
-                        <div>
-                          <Text c="dimmed" fw={700} size="md">
-                            {notification.username}
-                          </Text>
-                        </div>
-                        
-                      </Group>
-                    </UnstyledButton> 
-                    <Space h='md'/>
-                    <Group>
-                    
-                        <ActionIcon
-                        style={{ width: "100%", height: "100%" }}
-                              component={Link}
-                              href={`/post/${notification.Metadata.CreatePostAssociationTxindexMetadata.PostHashHex}`}
-                              variant="gradient"
-                                size="xl"
-                                aria-label="Gradient action icon"
-                                gradient={{ from: 'blue', to: 'rgba(255, 25, 251, 1)', deg: 298 }}
-                                                    >
-                            <IconThumbUp />
-                            <Space w='sm'/>
-                            <Text fw={500} size="sm">
-                          Liked your post
-                        </Text>
-                          </ActionIcon>
-                    </Group>
-                    <Space h='md'/>
+                {isLoading ? (
+                  <Center>
+                    <Loader variant="bars" />
+                  </Center>
+                ) : (
+                  notifications.map((n) => (
+                    <>
+                      {/* Liked Post */}
+                      {(n.notification.Metadata.TxnType === 'CREATE_POST_ASSOCIATION' &&
+                        n.notification.Metadata.CreatePostAssociationTxindexMetadata
+                          .AssociationValue === 'LIKE') ||
+                        (n.notification.Metadata.TxnType === 'LIKE' && (
+                          <>
+                            <Notification
+                              withCloseButton={false}
+                              withBorder
+                              icon={<IconThumbUp size="1.3rem" />}
+                              radius="md"
+                              title={
+                                <>
+                                  <Group>
+                                    <UnstyledButton>
+                                      <Group style={{ width: '100%', flexGrow: 1 }}>
+                                        <Avatar
+                                          size="lg"
+                                          radius="sm"
+                                          src={
+                                            n.transactorProfile?.ExtraData?.NFTProfilePictureUrl ||
+                                            n.transactorProfile?.ExtraData?.LargeProfilePicURL ||
+                                            `https://node.deso.org/api/v0/get-single-profile-picture/${n.notification.Metadata.TransactorPublicKeyBase58Check}` ||
+                                            null
+                                          }
+                                        />
+                                        <div>
+                                          <Box maw={222}>
+                                            <Text fw={500} size="sm" truncate="end">
+                                              {n.transactorProfile?.ExtraData?.DisplayName ||
+                                                n.transactorProfile?.Username ||
+                                                'Anon'}
+                                            </Text>
+                                          </Box>
+                                          <Text fw={500} size="xs">
+                                            @{n.transactorProfile?.Username || 'Anon'}
+                                          </Text>
+                                        </div>
+                                      </Group>
+                                    </UnstyledButton>
 
-                        <Group>
-                         
-                        </Group>
-                               </>}>
-                        </Notification>
-                      
-                      </>
-                    )}
+                                    <UnstyledButton
+                                      component={Link}
+                                      href={`/post/${
+                                        n.notification.Metadata
+                                          ?.CreatePostAssociationTxindexMetadata?.PostHashHex ||
+                                        n.notification.Metadata?.LikeTxindexMetadata.PostHashHex
+                                      }`}
+                                    >
+                                      <Group>
+                                        <Text fw={500} size="sm" td="">
+                                          Liked
+                                        </Text>
 
-          {notification.Metadata.TxnType === "CREATE_POST_ASSOCIATION" && notification.Metadata?.CreatePostAssociationTxindexMetadata.AssociationValue === "LOVE" && (
-                      <>
-                       <Notification withCloseButton={false} withBorder radius="md" color="red" title={<><UnstyledButton component={Link} href={`/wave/${notification.username}`}>
-                      <Group style={{ width: "100%", flexGrow: 1 }}>
-                        <Avatar
-                          size="md"
-                          src={
-                            `https://node.deso.org/api/v0/get-single-profile-picture/${notification.Metadata?.TransactorPublicKeyBase58Check}` ||
-                            null
-                          }
-                        />
-                        <div>
-                          <Text c="dimmed" fw={700} size="md">
-                            {notification.username}
-                          </Text>
-                        </div>
-                        
-                      </Group>
-                    </UnstyledButton> 
-                    <Space h='md'/>
-                    <Group>
-                    
-                        <ActionIcon
-                            style={{ width: "100%", height: "100%" }}
-                            component={Link}
-                            href={`/post/${notification.Metadata?.CreatePostAssociationTxindexMetadata?.PostHashHex}`}
-                            variant="gradient"
-                            size="xl"
-                            aria-label="Gradient action icon"
-                            gradient={{ from: 'blue', to: 'pink', deg: 298 }}
-                          >
-                            <IconHeartPlus />
-                            <Space w='md'/>
-                            <Text fw={500} size="sm">
-                          Loved your post
-                        </Text>
-                          </ActionIcon>
-                    </Group>
-                    <Space h='md'/>
+                                        <Box maw={321}>
+                                          <Text size="sm" truncate="end">
+                                            {n.reactedPost?.Body || 'your post'}
+                                          </Text>
+                                        </Box>
+                                      </Group>
+                                    </UnstyledButton>
+                                  </Group>
+                                </>
+                              }
+                            />
+                          </>
+                        ))}
 
-                        <Group>
-                         
-                        </Group>
-                               </>}>
-                        </Notification>
-                      </>
-                    )}
+                      {/* Loved Post */}
+                      {n.notification.Metadata.TxnType === 'CREATE_POST_ASSOCIATION' &&
+                        n.notification.Metadata?.CreatePostAssociationTxindexMetadata
+                          .AssociationValue === 'LOVE' && (
+                          <>
+                            <Notification
+                              withCloseButton={false}
+                              withBorder
+                              icon={<IconHeartFilled size="1.3rem" />}
+                              radius="md"
+                              title={
+                                <>
+                                  <Group>
+                                    <UnstyledButton>
+                                      <Group style={{ width: '100%', flexGrow: 1 }}>
+                                        <Avatar
+                                          size="lg"
+                                          radius="sm"
+                                          src={
+                                            n.transactorProfile?.ExtraData?.NFTProfilePictureUrl ||
+                                            n.transactorProfile?.ExtraData?.LargeProfilePicURL ||
+                                            `https://node.deso.org/api/v0/get-single-profile-picture/${n.notification.Metadata.TransactorPublicKeyBase58Check}` ||
+                                            null
+                                          }
+                                        />
+                                        <div>
+                                          <Box maw={222}>
+                                            <Text fw={500} size="sm" truncate="end">
+                                              {n.transactorProfile?.ExtraData?.DisplayName ||
+                                                n.transactorProfile?.Username ||
+                                                'Anon'}
+                                            </Text>
+                                          </Box>
+                                          <Text fw={500} size="xs">
+                                            @{n.transactorProfile?.Username || 'Anon'}
+                                          </Text>
+                                        </div>
+                                      </Group>
+                                    </UnstyledButton>
 
-                    {notification.Metadata.TxnType === "LIKE" && (
-                      <>
-                      <Notification withCloseButton={false} withBorder radius="md" color='rgba(255, 25, 251, 1)' title={<><UnstyledButton component={Link} href={`/wave/${notification.username}`}>
-                      <Group style={{ width: "100%", flexGrow: 1 }}>
-                        <Avatar
-                          size="md"
-                          src={
-                            `https://node.deso.org/api/v0/get-single-profile-picture/${notification.Metadata.TransactorPublicKeyBase58Check}` ||
-                            null
-                          }
-                        />
-                        <div>
-                          <Text c="dimmed" fw={700} size="md">
-                            {notification.username}
-                          </Text>
-                        </div>
-                        
-                      </Group>
-                    </UnstyledButton> 
-                    <Space h='md'/>
-                    <Group>
-                    
-                        <ActionIcon
-                        style={{ width: "100%", height: "100%" }}
-                              component={Link}
-                              href={`/post/${notification.Metadata.LikeTxindexMetadata.PostHashHex}`}
-                              variant="gradient"
-      size="xl"
-      aria-label="Gradient action icon"
-      gradient={{ from: 'blue', to: 'rgba(255, 25, 251, 1)', deg: 298 }}
-                          >
-                           <IconThumbUpFilled/>
-                            <Space w='sm'/>
-                        <Text fw={500} size="sm">
-                          Liked your post
-                        </Text>
-                        
-                        
-                          </ActionIcon>
-                    </Group>
-                    <Space h='md'/>
+                                    <UnstyledButton
+                                      component={Link}
+                                      href={`/post/${n.notification.Metadata?.CreatePostAssociationTxindexMetadata?.PostHashHex}`}
+                                    >
+                                      <Group>
+                                        <Text fw={500} size="sm" td="">
+                                          Loved
+                                        </Text>
 
-                        <Group>
-                         
-                        </Group>
-                       
-                        </>}>
+                                        <Box maw={321}>
+                                          <Text size="sm" truncate="end">
+                                            {n.reactedPost?.Body || 'your post!'}
+                                          </Text>
+                                        </Box>
+                                      </Group>
+                                    </UnstyledButton>
+                                  </Group>
+                                </>
+                              }
+                            />
+                          </>
+                        )}
 
-                        </Notification>
-                      </>
-                    )}
-                    {notification.Metadata.TxnType === "FOLLOW" && (
-                     <>
-                      <Notification withCloseButton={false} withBorder radius="md" color='rgba(255, 112, 146, 1)' title={<><UnstyledButton component={Link} href={`/wave/${notification.username}`}>
-                      <Group style={{ width: "100%", flexGrow: 1 }}>
-                        <Avatar
-                          size="md"
-                          src={
-                            `https://node.deso.org/api/v0/get-single-profile-picture/${notification.Metadata.TransactorPublicKeyBase58Check}` ||
-                            null
-                          }
-                        />
-                        <div>
-                          <Text c="dimmed" fw={700} size="md">
-                            {notification.username}
-                          </Text>
-                        </div>
-                        
-                      </Group>
-                    </UnstyledButton> 
-                    <Space h='md'/>
-                    <Group>
-                    
-                        <ActionIcon
-                        style={{ width: "100%", height: "100%", padding: "10px" }}
-                              component={Link}
-                              href={`/wave/${notification.username}`}
-                              variant="gradient"
-                              size="xl"
-                              aria-label="Gradient action icon"
-                              gradient={{ from: 'rgba(255, 112, 146, 1)', to: 'blue', deg: 90 }}
-                          >
-                            <IconUsers />
-                            <Space w='md'/>
-                        <Text fw={500} size="sm">
-                          Followed You
-                        </Text>
-                          </ActionIcon>
-                          
-                    </Group>
-                    <Space h='md'/>
+                      {/* Mentions */}
+                      {n.notification.Metadata.TxnType === 'SUBMIT_POST' &&
+                        n.notification.Metadata.AffectedPublicKeys[0].Metadata ===
+                          'MentionedPublicKeyBase58Check' && (
+                          <>
+                            <Notification
+                              withCloseButton={false}
+                              withBorder
+                              radius="md"
+                              icon={<IconAt />}
+                              title={
+                                <>
+                                  <Group>
+                                    <UnstyledButton
+                                      component={Link}
+                                      href={`/wave/${n.transactorProfile?.Username}`}
+                                    >
+                                      <Group style={{ width: '100%', flexGrow: 1 }}>
+                                        <Avatar
+                                          size="lg"
+                                          radius="sm"
+                                          src={
+                                            n.transactorProfile?.ExtraData?.NFTProfilePictureUrl ||
+                                            n.transactorProfile?.ExtraData?.LargeProfilePicURL ||
+                                            `https://node.deso.org/api/v0/get-single-profile-picture/${n.notification.Metadata.TransactorPublicKeyBase58Check}` ||
+                                            null
+                                          }
+                                        />
+                                        <div>
+                                          <Box maw={222}>
+                                            <Text fw={500} size="sm" truncate="end">
+                                              {n.transactorProfile?.ExtraData?.DisplayName ||
+                                                n.transactorProfile?.Username ||
+                                                'Anon'}
+                                            </Text>
+                                          </Box>
+                                          <Text fw={500} size="xs">
+                                            @{n.transactorProfile?.Username || 'Anon'}
+                                          </Text>
+                                        </div>
+                                      </Group>
+                                    </UnstyledButton>
+                                    <Text fw={500} size="sm">
+                                      Mentioned you
+                                    </Text>
+                                  </Group>
+                                  <Post
+                                    post={n.relatedModifiedPost}
+                                    username={n.transactorProfile?.Username}
+                                    key={n.transactorProfile?.PublicKeyBase58Check}
+                                  />
+                                </>
+                              }
+                            />
+                          </>
+                        )}
 
-                        <Group>
-                         
-                        </Group>
-                       
-                        </>}>
+                      {/* Reposts & Quotes */}
+                      {n.notification.Metadata.TxnType === 'SUBMIT_POST' &&
+                        n.notification.Metadata.AffectedPublicKeys[0].Metadata ===
+                          'RepostedPublicKeyBase58Check' && (
+                          <>
+                            <Notification
+                              withCloseButton={false}
+                              withBorder
+                              icon={<IconRecycle size="1.3rem" />}
+                              radius="md"
+                              title={
+                                <>
+                                  <Group justify="right">
+                                    <Text c="dimmed" size="xs" fw={500}>
+                                      {formatDate(n.relatedModifiedPost?.TimestampNanos)} ago
+                                    </Text>
+                                  </Group>
+                                  <Group>
+                                    <UnstyledButton
+                                      component={Link}
+                                      href={`/wave/${n.relatedModifiedPost?.ProfileEntryResponse?.Username}`}
+                                    >
+                                      <Group style={{ width: '100%', flexGrow: 1 }}>
+                                        <Avatar
+                                          size="lg"
+                                          radius="sm"
+                                          src={
+                                            n.transactorProfile?.ExtraData?.NFTProfilePictureUrl ||
+                                            n.relatedModifiedPost?.ProfileEntryResponse?.ExtraData
+                                              ?.LargeProfilePicURL ||
+                                            `https://node.deso.org/api/v0/get-single-profile-picture/${n.notification.Metadata.TransactorPublicKeyBase58Check}` ||
+                                            null
+                                          }
+                                        />
+                                        <div>
+                                          <Box maw={222}>
+                                            <Text fw={500} size="sm" truncate="end">
+                                              {n.relatedModifiedPost?.ProfileEntryResponse
+                                                ?.ExtraData?.DisplayName ||
+                                                n.relatedModifiedPost?.ProfileEntryResponse
+                                                  ?.Username ||
+                                                'Anon'}
+                                            </Text>
+                                          </Box>
+                                          <Text fw={500} size="xs">
+                                            @
+                                            {n.relatedModifiedPost.ProfileEntryResponse.Username ||
+                                              'Anon'}
+                                          </Text>
+                                        </div>
+                                      </Group>
+                                    </UnstyledButton>
 
-                        </Notification>
-                     </>
-                    )}
-                    {notification.Metadata.TxnType === "SUBMIT_POST" &&
-                      notification.Metadata.AffectedPublicKeys[0].Metadata ===
-                        "RepostedPublicKeyBase58Check" && (
+                                    <UnstyledButton
+                                      component={Link}
+                                      href={`/post/${n.notification.Metadata.SubmitPostTxindexMetadata.PostHashBeingModifiedHex}`}
+                                    >
+                                      <Text fw={500} size="sm">
+                                        Reposted
+                                      </Text>
+                                    </UnstyledButton>
+                                  </Group>
+                                  <Space h="md" />
+                                  <Post
+                                    post={n.relatedModifiedPost}
+                                    username={n.transactorProfile?.Username}
+                                    key={n.transactorProfile?.PublicKeyBase58Check}
+                                  />
+                                </>
+                              }
+                            />
+                          </>
+                        )}
+
+                      {/* Comments */}
+                      {n.notification.Metadata.TxnType === 'SUBMIT_POST' &&
+                        n.notification.Metadata.AffectedPublicKeys.length >= 2 &&
+                        n.notification.Metadata.AffectedPublicKeys[0].Metadata ===
+                          'ParentPosterPublicKeyBase58Check' && (
+                          <>
+                            <Notification
+                              withCloseButton={false}
+                              withBorder
+                              icon={<FaRegCommentDots size="1.3rem" />}
+                              radius="md"
+                              title={
+                                <>
+                                  <Group justify="right">
+                                    <Text c="dimmed" size="xs" fw={500}>
+                                      {formatDate(n.relatedModifiedPost?.TimestampNanos)} ago
+                                    </Text>
+                                  </Group>
+                                  <Group>
+                                    <UnstyledButton
+                                      component={Link}
+                                      href={`/wave/${n.relatedModifiedPost?.ProfileEntryResponse?.Username}`}
+                                    >
+                                      <Group style={{ width: '100%', flexGrow: 1 }}>
+                                        <Avatar
+                                          size="lg"
+                                          radius="sm"
+                                          src={
+                                            n.transactorProfile?.ExtraData?.NFTProfilePictureUrl ||
+                                            n.relatedModifiedPost?.ProfileEntryResponse?.ExtraData
+                                              ?.LargeProfilePicURL ||
+                                            `https://node.deso.org/api/v0/get-single-profile-picture/${n.notification.Metadata.TransactorPublicKeyBase58Check}` ||
+                                            null
+                                          }
+                                        />
+                                        <div>
+                                          <Box maw={222}>
+                                            <Text fw={500} size="sm" truncate="end">
+                                              {n.relatedModifiedPost?.ProfileEntryResponse
+                                                ?.ExtraData?.DisplayName ||
+                                                n.relatedModifiedPost?.ProfileEntryResponse
+                                                  ?.Username ||
+                                                'Anon'}
+                                            </Text>
+                                          </Box>
+                                          <Text fw={500} size="xs">
+                                            @
+                                            {n.relatedModifiedPost.ProfileEntryResponse.Username ||
+                                              'Anon'}
+                                          </Text>
+                                        </div>
+                                      </Group>
+                                    </UnstyledButton>
+
+                                    <UnstyledButton
+                                      component={Link}
+                                      href={`/post/${n.relatedParentPost?.PostHashHex}`}
+                                    >
+                                      <Group>
+                                        <Text fw={500} size="sm" td="">
+                                          Commented on
+                                        </Text>
+                                      </Group>
+                                    </UnstyledButton>
+                                    <Box maw={321}>
+                                      <Text size="sm" truncate="end">
+                                        {n.relatedParentPost?.Body || ''}
+                                      </Text>
+                                    </Box>
+                                  </Group>
+                                  <Space h="md" />
+                                  <Post
+                                    post={n.relatedModifiedPost}
+                                    username={n.transactorProfile?.Username}
+                                    key={n.transactorProfile?.PublicKeyBase58Check}
+                                  />
+                                </>
+                              }
+                            />
+                          </>
+                        )}
+
+                      {/* Follows */}
+                      {n.notification.Metadata.TxnType === 'FOLLOW' && (
                         <>
-                          <Notification withCloseButton={false} withBorder radius="md" color='rgba(255, 110, 13, 1)' title={<><UnstyledButton component={Link} href={`/wave/${notification.username}`}>
-                      <Group style={{ width: "100%", flexGrow: 1 }}>
-                        <Avatar
-                          size="md"
-                          src={
-                            `https://node.deso.org/api/v0/get-single-profile-picture/${notification.Metadata.TransactorPublicKeyBase58Check}` ||
-                            null
-                          }
-                        />
-                        <div>
-                          <Text c="dimmed" fw={700} size="md">
-                            {notification.username}
-                          </Text>
-                        </div>
-                        
-                      </Group>
-                    </UnstyledButton> 
-                    <Space h='md'/>
-                    <Group>
-                    
-                        <ActionIcon
-                        style={{ width: "100%", height: "100%", padding: "10px" }}
-                              component={Link}
-                              href={`/post/${notification.Metadata.SubmitPostTxindexMetadata.PostHashBeingModifiedHex}`}
-                              variant="gradient"
-                              size="xl"
-                              aria-label="Gradient action icon"
-                              gradient={{ from: 'rgba(255, 110, 13, 1)', to: 'blue', deg: 90 }}
-                          >
-                            <IconRecycle/>
-                            <Space w='md'/>
-                        <Text fw={500} size="sm">
-                          Reposted
-                        </Text>
-                          </ActionIcon>
-                          
-                    </Group>
-                    <Space h='md'/>
-
-                        <Group>
-                         
-                        </Group>
-                       
-                        </>}>
-
-                        </Notification>
-                        </>
-                      )}
-                    {notification.Metadata.TxnType === "SUBMIT_POST" &&
-                      notification.Metadata.AffectedPublicKeys.length >= 2 &&
-                      notification.Metadata.AffectedPublicKeys[0].Metadata ===
-                        "BasicTransferOutput" &&
-                      notification.Metadata.AffectedPublicKeys[1].Metadata ===
-                        "MentionedPublicKeyBase58Check" && (
-                        <>
-                         <Notification withCloseButton={false} withBorder radius="md" color='rgba(59, 247, 42, 1)'title={<>
-                          <UnstyledButton component={Link} href={`/wave/${notification.username}`}>
-                      <Group style={{ width: "100%", flexGrow: 1 }}>
-                        <Avatar
-                          size="md"
-                          src={
-                            `https://node.deso.org/api/v0/get-single-profile-picture/${notification.Metadata.TransactorPublicKeyBase58Check}` ||
-                            null
-                          }
-                        />
-                        <div>
-                          <Text c="dimmed" fw={700} size="md">
-                            {notification.username}
-                          </Text>
-                        </div>
-                        
-                      </Group>
-                    </UnstyledButton> 
-                    <Space h='md'/>
-                    
-                    
-                    <Group>
-                    
-                      <ActionIcon
-                          style={{ width: "100%", height: "100%", padding: "10px" }}
-                          component={Link}
-                          href={`/post/${notification.Metadata.SubmitPostTxindexMetadata.PostHashBeingModifiedHex}`}
-                          variant="gradient"
-                          size="xl"
-                          aria-label="Gradient action icon"
-                          gradient={{ from: 'rgba(59, 247, 42, 1)', to: 'blue', deg: 90 }}
-                        >
-                        <IconAt/>
-                        <Space w='md'/>
-                    <Text fw={500} size="sm">
-                      Mentioned You
-                    </Text>
-                      </ActionIcon>
-                      
-                </Group>
-                          
-                    
-                    <Space h='md'/>
-
-                        <Group>
-                         
-                        </Group>
-                       
-                        </>}>
-
-                        </Notification>
-                          
-                        </>
-                      )}
-
-                    {notification.Metadata.TxnType === "SUBMIT_POST" &&
-                      notification.Metadata.AffectedPublicKeys.length >= 2 &&
-                      notification.Metadata.AffectedPublicKeys[1].Metadata ===
-                        "ParentPosterPublicKeyBase58Check" && (
-                        <>
-                           <Notification withCloseButton={false} withBorder radius="md" color='rgba(255, 244, 25, 1)' title={<><UnstyledButton component={Link} href={`/wave/${notification.username}`}>
-                      <Group style={{ width: "100%", flexGrow: 1 }}>
-                        <Avatar
-                          size="md"
-                          src={
-                            `https://node.deso.org/api/v0/get-single-profile-picture/${notification.Metadata.TransactorPublicKeyBase58Check}` ||
-                            null
-                          }
-                        />
-                        <div>
-                          <Text c="dimmed" fw={700} size="md">
-                            {notification.username}
-                          </Text>
-                        </div>
-                        
-                      </Group>
-                    </UnstyledButton> 
-                    <Space h='md'/>
-                    <Group>
-                    
-                        <ActionIcon
-                        style={{ width: "100%", height: "100%" }}
-                              component={Link}
-                              href={`/post/${notification.Metadata.SubmitPostTxindexMetadata.ParentPostHashHex}`}
-                              variant="gradient"
-                              size="xl"
-                              aria-label="Gradient action icon"
-                              gradient={{ from: 'blue', to: 'rgba(255, 244, 25, 1)', deg: 298 }}
-                          >
-                           <IconMessage2/>
-                            <Space w='sm'/>
-                        <Text fw={500} size="sm">
-                          Commented
-                        </Text>
-                        
-                        
-                          </ActionIcon>
-                    </Group>
-                    <Space h='md'/>
-
-                        <Group>
-                         
-                        </Group>
-                       
-                        </>}>
-
-                        </Notification>
-                        </>
-                      )}
-                    {notification.Metadata.TxnType === "SUBMIT_POST" &&
-                      notification.Metadata.AffectedPublicKeys[0].Metadata ===
-                        "MentionedPublicKeyBase58Check" && (
-                        <>
-                             <Notification withCloseButton={false} withBorder radius="md" color='rgba(59, 247, 42, 1)'title={<>
-                             <UnstyledButton component={Link} href={`/wave/${notification.username}`}>
-                      <Group style={{ width: "100%", flexGrow: 1 }}>
-                        <Avatar
-                          size="md"
-                          src={
-                            `https://node.deso.org/api/v0/get-single-profile-picture/${notification.Metadata.TransactorPublicKeyBase58Check}` ||
-                            null
-                          }
-                        />
-                        <div>
-                          <Text c="dimmed" fw={700} size="md">
-                            {notification.username}
-                          </Text>
-                        </div>
-                        
-                      </Group>
-                    </UnstyledButton> 
-                    <Space h='md'/>
-                    <Group>
-                    
-                        <ActionIcon
-                        style={{ width: "100%", height: "100%", padding: "10px" }}
-                              component={Link}
-                              href={`/post/${notification.Metadata.SubmitPostTxindexMetadata.PostHashBeingModifiedHex}`}
-                              variant="gradient"
-                              size="xl"
-                              aria-label="Gradient action icon"
-                              gradient={{ from: 'rgba(59, 247, 42, 1)', to: 'blue', deg: 90 }}
-                          >
-                            <IconAt/>
-                            <Space w='md'/>
-                        <Text fw={500} size="sm">
-                          Mentioned You
-                        </Text>
-                          </ActionIcon>
-                          
-                    </Group>
-                    <Space h='md'/>
-
-                        <Group>
-                         
-                        </Group>
-                       
-                        </>}>
-
-                        </Notification>
-                        </>
-                      )}
-                    {notification.Metadata.TxnType === "SUBMIT_POST" &&
-                      notification.Metadata.AffectedPublicKeys[0].Metadata ===
-                        "ParentPosterPublicKeyBase58Check" && (
-                        <>
-                          <Notification withCloseButton={false} withBorder radius="md" color='rgba(255, 244, 25, 1)' title={<><UnstyledButton component={Link} href={`/wave/${notification.username}`}>
-                      <Group style={{ width: "100%", flexGrow: 1 }}>
-                        <Avatar
-                          size="md"
-                          src={
-                            `https://node.deso.org/api/v0/get-single-profile-picture/${notification.Metadata.TransactorPublicKeyBase58Check}` ||
-                            null
-                          }
-                        />
-                        <div>
-                          <Text c="dimmed" fw={700} size="md">
-                            {notification.username}
-                          </Text>
-                        </div>
-                        
-                      </Group>
-                    </UnstyledButton> 
-                    <Space h='md'/>
-                    <Group>
-                    
-                        <ActionIcon
-                        style={{ width: "100%", height: "100%" }}
-                              component={Link}
-                              href={`/post/${notification.Metadata.SubmitPostTxindexMetadata.ParentPostHashHex}`}
-                              variant="gradient"
-      size="xl"
-      aria-label="Gradient action icon"
-      gradient={{ from: 'blue', to: 'rgba(255, 244, 25, 1)', deg: 298 }}
-                          >
-                           <IconMessage2/>
-                            <Space w='sm'/>
-                        <Text fw={500} size="sm">
-                          Commented
-                        </Text>
-                        
-                        
-                          </ActionIcon>
-                    </Group>
-                    <Space h='md'/>
-
-                        <Group>
-                         
-                        </Group>
-                       
-                        </>}>
-
-                        </Notification>
+                          <Notification
+                            withCloseButton={false}
+                            withBorder
+                            icon={<AiOutlineUserAdd size="1.3rem" />}
+                            radius="md"
+                            title={
+                              <>
+                                <Group>
+                                  <UnstyledButton
+                                    component={Link}
+                                    href={`/wave/${n.transactorProfile?.Username}`}
+                                  >
+                                    <Group style={{ width: '100%', flexGrow: 1 }}>
+                                      <Avatar
+                                        size="lg"
+                                        radius="sm"
+                                        src={
+                                          n.transactorProfile?.ExtraData?.NFTProfilePictureUrl ||
+                                          n.transactorProfile?.ExtraData?.LargeProfilePicURL ||
+                                          `https://node.deso.org/api/v0/get-single-profile-picture/${n.notification.Metadata.TransactorPublicKeyBase58Check}` ||
+                                          null
+                                        }
+                                      />
+                                      <div>
+                                        <Box maw={222}>
+                                          <Text fw={500} size="sm" truncate="end">
+                                            {n.transactorProfile?.ExtraData?.DisplayName ||
+                                              n.transactorProfile?.Username ||
+                                              'Anon'}
+                                          </Text>
+                                        </Box>
+                                        <Text fw={500} size="xs">
+                                          @{n.transactorProfile?.Username || 'Anon'}
+                                        </Text>
+                                      </div>
+                                      <Text fw={500} size="sm" td="">
+                                        Followed You!
+                                      </Text>
+                                    </Group>
+                                  </UnstyledButton>
+                                </Group>
+                              </>
+                            }
+                          />
                         </>
                       )}
 
-{notification.Metadata.BasicTransferTxindexMetadata &&
-  notification.Metadata.BasicTransferTxindexMetadata.DiamondLevel > 0 && (
-    <>
-     <Notification withCloseButton={false} withBorder radius="md" color='rgba(42, 247, 199, 1)' title={<><UnstyledButton component={Link} href={`/wave/${notification.username}`}>
-                      <Group style={{ width: "100%", flexGrow: 1 }}>
-                        <Avatar
-                          size="md"
-                          src={
-                            `https://node.deso.org/api/v0/get-single-profile-picture/${notification.Metadata.TransactorPublicKeyBase58Check}` ||
-                            null
-                          }
-                        />
-                        <div>
-                          <Text c="dimmed" fw={700} size="md">
-                            {notification.username}
-                          </Text>
-                        </div>
-                        
-                      </Group>
-                    </UnstyledButton> 
-                    <Space h='md'/>
-                    <Group>
-                    
-                        <ActionIcon
-                        style={{ width: "100%", height: "100%" }}
-                        component={Link}
-                        href={`/post/${notification.Metadata.BasicTransferTxindexMetadata.PostHashHex}`}
-                              variant="gradient"
-      size="xl"
-      aria-label="Gradient action icon"
-      gradient={{ from: 'blue', to: 'rgba(42, 247, 199, 1)', deg: 298 }}
-                          >
-                           <IconDiamond/>
-                            <Space w='sm'/>
-                            <Text fw={500} size="sm">
-      Tipped {convertToUSD(notification?.Metadata?.BasicTransferTxindexMetadata?.TotalOutputNanos)} in Diamonds
-    </Text>
-                        
-                        
-                          </ActionIcon>
-                    </Group>
-                    <Space h='md'/>
+                      {/* Diamonds */}
+                      {n.notification.Metadata.BasicTransferTxindexMetadata &&
+                        n.notification.Metadata.BasicTransferTxindexMetadata.DiamondLevel > 0 && (
+                          <>
+                            <Notification
+                              withCloseButton={false}
+                              withBorder
+                              icon={<IconDiamond />}
+                              radius="sm"
+                              title={
+                                <>
+                                  <Group>
+                                    <UnstyledButton
+                                      component={Link}
+                                      href={`/wave/${n.transactorProfile?.Username}`}
+                                    >
+                                      <Group style={{ width: '100%', flexGrow: 1 }}>
+                                        <Avatar
+                                          size="lg"
+                                          radius="sm"
+                                          src={
+                                            n.transactorProfile?.ExtraData?.NFTProfilePictureUrl ||
+                                            n.transactorProfile?.ExtraData?.LargeProfilePicURL ||
+                                            `https://node.deso.org/api/v0/get-single-profile-picture/${n.notification.Metadata.TransactorPublicKeyBase58Check}` ||
+                                            null
+                                          }
+                                        />
+                                        <div>
+                                          <Box maw={222}>
+                                            <Text fw={500} size="sm" truncate="end">
+                                              {n.transactorProfile?.ExtraData?.DisplayName ||
+                                                n.transactorProfile?.Username ||
+                                                'Anon'}
+                                            </Text>
+                                          </Box>
+                                          <Text fw={500} size="xs">
+                                            @{n.transactorProfile?.Username || 'Anon'}
+                                          </Text>
+                                        </div>
+                                      </Group>
+                                    </UnstyledButton>
 
-                        <Group>
-                         
-                        </Group>
-                       
-                        </>}>
+                                    <UnstyledButton
+                                      component={Link}
+                                      href={`/wave/${n.transactorProfile?.Username}`}
+                                    >
+                                      <Group>
+                                        <Text fw={500} size="sm">
+                                          Tipped{' '}
+                                          {convertToUSD(
+                                            n.notification?.Metadata?.BasicTransferTxindexMetadata
+                                              ?.TotalOutputNanos
+                                          )}{' '}
+                                          to
+                                        </Text>
 
-                        </Notification>
+                                        <Box maw={321}>
+                                          <Text size="sm" truncate="end">
+                                            {n.relatedParentPost?.Body || ''}
+                                          </Text>
+                                        </Box>
+                                      </Group>
+                                    </UnstyledButton>
+                                  </Group>
+                                </>
+                              }
+                            />
+                          </>
+                        )}
 
-      
-    </>
-  
-)}
+                      {/* CC Buys */}
+                      {n.notification.Metadata.TxnType === 'CREATOR_COIN' &&
+                        n.notification.Metadata.CreatorCoinTxindexMetadata.OperationType ===
+                          'buy' && (
+                          <>
+                            <Notification
+                              withCloseButton={false}
+                              withBorder
+                              icon={<IconCoin />}
+                              radius="md"
+                              title={
+                                <>
+                                  <Group>
+                                    <UnstyledButton
+                                      component={Link}
+                                      href={`/wave/${n.transactorProfile?.Username}`}
+                                    >
+                                      <Group style={{ width: '100%', flexGrow: 1 }}>
+                                        <Avatar
+                                          size="lg"
+                                          radius="sm"
+                                          src={
+                                            n.transactorProfile?.ExtraData?.NFTProfilePictureUrl ||
+                                            n.transactorProfile?.ExtraData?.LargeProfilePicURL ||
+                                            `https://node.deso.org/api/v0/get-single-profile-picture/${n.notification.Metadata.TransactorPublicKeyBase58Check}` ||
+                                            null
+                                          }
+                                        />
+                                        <div>
+                                          <Box maw={222}>
+                                            <Text fw={500} size="sm" truncate="end">
+                                              {n.transactorProfile?.ExtraData?.DisplayName ||
+                                                n.transactorProfile?.Username ||
+                                                'Anon'}
+                                            </Text>
+                                          </Box>
+                                          <Text fw={500} size="xs">
+                                            @{n.transactorProfile?.Username || 'Anon'}
+                                          </Text>
+                                        </div>
+                                      </Group>
+                                    </UnstyledButton>
+                                    <Text fw={500} size="sm">
+                                      Bought{' '}
+                                      {convertToUSD(
+                                        n.notification?.Metadata?.BasicTransferTxindexMetadata
+                                          ?.TotalOutputNanos
+                                      )}{' '}
+                                      of your Creator Coin!
+                                    </Text>
+                                  </Group>
+                                </>
+                              }
+                            />
+                          </>
+                        )}
 
-                    {notification.Metadata.TxnType === "CREATOR_COIN" &&
-                      notification.Metadata.CreatorCoinTxindexMetadata
-                        .OperationType === "buy" && (
-                        <>
-                        <Notification withCloseButton={false} withBorder radius="md" color='rgba(42, 247, 199, 1)' title={<><UnstyledButton component={Link} href={`/wave/${notification.username}`}>
-                      <Group style={{ width: "100%", flexGrow: 1 }}>
-                        <Avatar
-                          size="md"
-                          src={
-                            `https://node.deso.org/api/v0/get-single-profile-picture/${notification.Metadata.TransactorPublicKeyBase58Check}` ||
-                            null
-                          }
-                        />
-                        <div>
-                          <Text c="dimmed" fw={700} size="md">
-                            {notification.username}
-                          </Text>
-                        </div>
-                        
-                      </Group>
-                    </UnstyledButton> 
-                    <Space h='md'/>
-                    <Group>
-                    
-                        <ActionIcon
-                        style={{ width: "100%", height: "100%" }}
-                        variant="gradient"
-                        size="xl"
-                        aria-label="Gradient action icon"
-                        gradient={{ from: 'blue', to: 'rgba(42, 247, 199, 1)', deg: 298 }}
-                          >
-                            <IconCoin />
-                            <Space w='sm'/>
-                            <Text fw={500} size="sm">Bought {convertToUSD(notification?.Metadata?.BasicTransferTxindexMetadata?.TotalOutputNanos)} of your Creator Coin</Text>
-                            
-                          </ActionIcon>
-                         
-                    </Group>
+                      {/* Sent DESO */}
+                      {n.notification.Metadata.TxnType === 'BASIC_TRANSFER' &&
+                        n.notification.Metadata.AffectedPublicKeys[0].Metadata ===
+                          'BasicTransferOutput' &&
+                        n.notification.Metadata.AffectedPublicKeys[0].PublicKeyBase58Check ===
+                          currentUser.PublicKeyBase58Check &&
+                        n.notification.Metadata.BasicTransferTxindexMetadata.DiamondLevel === 0 && (
+                          <>
+                            <Notification
+                              icon={<GiMoneyStack size="1.3rem" />}
+                              withCloseButton={false}
+                              withBorder
+                              radius="md"
+                              title={
+                                <>
+                                  <Group>
+                                    <UnstyledButton
+                                      component={Link}
+                                      href={`/wave/${n.transactorProfile?.Username}`}
+                                    >
+                                      <Group style={{ width: '100%', flexGrow: 1 }}>
+                                        <Avatar
+                                          size="lg"
+                                          radius="sm"
+                                          src={
+                                            n.transactorProfile?.ExtraData?.NFTProfilePictureUrl ||
+                                            n.transactorProfile?.ExtraData?.LargeProfilePicURL ||
+                                            `https://node.deso.org/api/v0/get-single-profile-picture/${n.notification.Metadata.TransactorPublicKeyBase58Check}` ||
+                                            null
+                                          }
+                                        />
+                                        <div>
+                                          <Box maw={222}>
+                                            <Text fw={500} size="sm" truncate="end">
+                                              {n.transactorProfile?.ExtraData?.DisplayName ||
+                                                n.transactorProfile?.Username ||
+                                                'Anon'}
+                                            </Text>
+                                          </Box>
+                                          <Text fw={500} size="xs">
+                                            @{n.transactorProfile?.Username || 'Anon'}
+                                          </Text>
+                                        </div>
+                                      </Group>
+                                    </UnstyledButton>
 
-                    
-                    <Space h='md'/>
-
-                        <Group>
-                         
-                        </Group>
-                       
-                        </>}>
-
-                        </Notification>
-
-                        </>
-                      )}
-
-                    {notification.Metadata.TxnType === "CREATOR_COIN" &&
-                      notification.Metadata.CreatorCoinTxindexMetadata
-                        .OperationType === "sold" && (
-                        <>
-                          <Notification withCloseButton={false} withBorder radius="md" color='rgba(42, 247, 199, 1)' title={<><UnstyledButton component={Link} href={`/wave/${notification.username}`}>
-                      <Group style={{ width: "100%", flexGrow: 1 }}>
-                        <Avatar
-                          size="md"
-                          src={
-                            `https://node.deso.org/api/v0/get-single-profile-picture/${notification.Metadata.TransactorPublicKeyBase58Check}` ||
-                            null
-                          }
-                        />
-                        <div>
-                          <Text c="dimmed" fw={700} size="md">
-                            {notification.username}
-                          </Text>
-                        </div>
-                        
-                      </Group>
-                    </UnstyledButton> 
-                    <Space h='md'/>
-                    <Group>
-                    
-                        <ActionIcon
-                            style={{ width: "100%", height: "100%" }}
-                            variant="gradient"
-                            size="xl"
-                            aria-label="Gradient action icon"
-                            gradient={{ from: 'blue', to: 'rgba(42, 247, 199, 1)', deg: 298 }}
-                          >
-                            <IconCoinOff />
-                            <Space w='sm'/>
-                            <Text fw={500} size="sm">Sold {convertToUSD(notification?.Metadata?.BasicTransferTxindexMetadata?.TotalOutputNanos)} of your Creator Coin</Text>
-
-                          </ActionIcon>
-                    </Group>
-                    <Space h='md'/>
-
-                        <Group>
-                         
-                        </Group>
-                       
-                        </>}>
-
-                        </Notification>
-                        </>
-                      )}
-                    {notification.Metadata.TxnType === "BASIC_TRANSFER" &&
-                      notification.Metadata.AffectedPublicKeys[0].Metadata ===
-                        "BasicTransferOutput" &&
-                      notification.Metadata.AffectedPublicKeys[0]
-                        .PublicKeyBase58Check ===
-                        currentUser.PublicKeyBase58Check &&  notification.Metadata.BasicTransferTxindexMetadata
-                        .DiamondLevel === 0 && (
-                        <>
-                         <Notification withCloseButton={false} withBorder radius="md" color='rgba(42, 247, 199, 1)' title={<><UnstyledButton component={Link} href={`/wave/${notification.username}`}>
-                      <Group style={{ width: "100%", flexGrow: 1 }}>
-                        <Avatar
-                          size="md"
-                          src={
-                            `https://node.deso.org/api/v0/get-single-profile-picture/${notification.Metadata.TransactorPublicKeyBase58Check}` ||
-                            null
-                          }
-                        />
-                        <div>
-                          <Text c="dimmed" fw={700} size="md">
-                            {notification.username}
-                          </Text>
-                        </div>
-                        
-                      </Group>
-                    </UnstyledButton> 
-                    <Space h='md'/>
-                    <Group>
-                    
-                        <ActionIcon
-                        style={{ width: "100%", height: "100%" }}
-                     
-                              variant="gradient"
-      size="xl"
-      aria-label="Gradient action icon"
-      gradient={{ from: 'blue', to: 'rgba(42, 247, 199, 1)', deg: 298 }}
-                          >
-                            <IconMoneybag />
-                            <Space w='sm'/>
-                            <Text fw={500} size="sm">Sent you DeSo</Text>
-
-                          </ActionIcon>
-                    </Group>
-                    <Space h='md'/>
-
-                        <Group>
-                         
-                        </Group>
-                       
-                        </>}>
-
-                        </Notification>
-                        </>
-                      )}
-                 </Container>
+                                    <Text fw={500} size="sm">
+                                      Sent you{' '}
+                                      {convertToUSD(
+                                        n.notification?.Metadata?.BasicTransferTxindexMetadata
+                                          ?.TotalOutputNanos
+                                      )}
+                                      !
+                                    </Text>
+                                  </Group>
+                                </>
+                              }
+                            />
+                          </>
+                        )}
+                    </>
+                  ))
+                )}
               </>
-            ))
-          )}
-  
-          <Space h={222} />
+            </Tabs.Panel>
+            <Tabs.Panel value="Follows">
+              {notifications.map((n) => (
+                <>
+                  {/* Follows */}
+                  {n.notification.Metadata.TxnType === 'FOLLOW' && (
+                    <>
+                      <Notification
+                        withCloseButton={false}
+                        withBorder
+                        icon={<AiOutlineUserAdd size="1.3rem" />}
+                        radius="md"
+                        title={
+                          <>
+                            <Group>
+                              <UnstyledButton
+                                component={Link}
+                                href={`/wave/${n.transactorProfile?.Username}`}
+                              >
+                                <Group style={{ width: '100%', flexGrow: 1 }}>
+                                  <Avatar
+                                    size="lg"
+                                    radius="sm"
+                                    src={
+                                      n.transactorProfile?.ExtraData?.NFTProfilePictureUrl ||
+                                      n.transactorProfile?.ExtraData?.LargeProfilePicURL ||
+                                      `https://node.deso.org/api/v0/get-single-profile-picture/${n.notification.Metadata.TransactorPublicKeyBase58Check}` ||
+                                      null
+                                    }
+                                  />
+                                  <div>
+                                    <Box maw={222}>
+                                      <Text fw={500} size="sm" truncate="end">
+                                        {n.transactorProfile?.ExtraData?.DisplayName ||
+                                          n.transactorProfile?.Username ||
+                                          'Anon'}
+                                      </Text>
+                                    </Box>
+                                    <Text fw={500} size="xs">
+                                      @{n.transactorProfile?.Username || 'Anon'}
+                                    </Text>
+                                  </div>
+                                  <Text fw={500} size="sm" td="">
+                                    Followed You!
+                                  </Text>
+                                </Group>
+                              </UnstyledButton>
+                            </Group>
+                          </>
+                        }
+                      />
+                    </>
+                  )}
+                </>
+              ))}
+            </Tabs.Panel>
+            <Tabs.Panel value="Mentions">
+              {notifications.map((n) => (
+                <>
+                  {/* Mentions */}
+                  {n.notification.Metadata.TxnType === 'SUBMIT_POST' &&
+                    n.notification.Metadata.AffectedPublicKeys[0].Metadata ===
+                      'MentionedPublicKeyBase58Check' && (
+                      <>
+                        <Notification
+                          withCloseButton={false}
+                          withBorder
+                          radius="md"
+                          icon={<IconAt />}
+                          title={
+                            <>
+                              <Group>
+                                <UnstyledButton
+                                  component={Link}
+                                  href={`/wave/${n.transactorProfile?.Username}`}
+                                >
+                                  <Group style={{ width: '100%', flexGrow: 1 }}>
+                                    <Avatar
+                                      size="lg"
+                                      radius="sm"
+                                      src={
+                                        n.transactorProfile?.ExtraData?.NFTProfilePictureUrl ||
+                                        n.transactorProfile?.ExtraData?.LargeProfilePicURL ||
+                                        `https://node.deso.org/api/v0/get-single-profile-picture/${n.notification.Metadata.TransactorPublicKeyBase58Check}` ||
+                                        null
+                                      }
+                                    />
+                                    <div>
+                                      <Box maw={222}>
+                                        <Text fw={500} size="sm" truncate="end">
+                                          {n.transactorProfile?.ExtraData?.DisplayName ||
+                                            n.transactorProfile?.Username ||
+                                            'Anon'}
+                                        </Text>
+                                      </Box>
+                                      <Text fw={500} size="xs">
+                                        @{n.transactorProfile?.Username || 'Anon'}
+                                      </Text>
+                                    </div>
+                                  </Group>
+                                </UnstyledButton>
+                                <Text fw={500} size="sm">
+                                  Mentioned you
+                                </Text>
+                              </Group>
+                              <Post
+                                post={n.relatedModifiedPost}
+                                username={n.transactorProfile?.Username}
+                                key={n.transactorProfile?.PublicKeyBase58Check}
+                              />
+                            </>
+                          }
+                        />
+                      </>
+                    )}
+                </>
+              ))}
+            </Tabs.Panel>
+            <Tabs.Panel value="Reactions">
+              {notifications.map((n) => (
+                <>
+                  {/* Liked Post */}
+                  {(n.notification.Metadata.TxnType === 'CREATE_POST_ASSOCIATION' &&
+                    n.notification.Metadata.CreatePostAssociationTxindexMetadata
+                      .AssociationValue === 'LIKE') ||
+                    (n.notification.Metadata.TxnType === 'LIKE' && (
+                      <>
+                        <Notification
+                          withCloseButton={false}
+                          withBorder
+                          icon={<IconThumbUp size="1.3rem" />}
+                          radius="md"
+                          title={
+                            <>
+                              <Group>
+                                <UnstyledButton>
+                                  <Group style={{ width: '100%', flexGrow: 1 }}>
+                                    <Avatar
+                                      size="lg"
+                                      radius="sm"
+                                      src={
+                                        n.transactorProfile?.ExtraData?.NFTProfilePictureUrl ||
+                                        n.transactorProfile?.ExtraData?.LargeProfilePicURL ||
+                                        `https://node.deso.org/api/v0/get-single-profile-picture/${n.notification.Metadata.TransactorPublicKeyBase58Check}` ||
+                                        null
+                                      }
+                                    />
+                                    <div>
+                                      <Box maw={222}>
+                                        <Text fw={500} size="sm" truncate="end">
+                                          {n.transactorProfile?.ExtraData?.DisplayName ||
+                                            n.transactorProfile?.Username ||
+                                            'Anon'}
+                                        </Text>
+                                      </Box>
+                                      <Text fw={500} size="xs">
+                                        @{n.transactorProfile?.Username || 'Anon'}
+                                      </Text>
+                                    </div>
+                                  </Group>
+                                </UnstyledButton>
 
+                                <UnstyledButton
+                                  component={Link}
+                                  href={`/post/${
+                                    n.notification.Metadata?.CreatePostAssociationTxindexMetadata
+                                      ?.PostHashHex ||
+                                    n.notification.Metadata?.LikeTxindexMetadata.PostHashHex
+                                  }`}
+                                >
+                                  <Group>
+                                    <Text fw={500} size="sm" td="">
+                                      Liked
+                                    </Text>
+
+                                    <Box maw={321}>
+                                      <Text size="sm" truncate="end">
+                                        {n.reactedPost?.Body || 'your post'}
+                                      </Text>
+                                    </Box>
+                                  </Group>
+                                </UnstyledButton>
+                              </Group>
+                            </>
+                          }
+                        />
+                      </>
+                    ))}
+                  {/* Loved Post */}
+                  {n.notification.Metadata.TxnType === 'CREATE_POST_ASSOCIATION' &&
+                    n.notification.Metadata?.CreatePostAssociationTxindexMetadata
+                      .AssociationValue === 'LOVE' && (
+                      <>
+                        <Notification
+                          withCloseButton={false}
+                          withBorder
+                          icon={<IconHeartFilled size="1.3rem" />}
+                          radius="md"
+                          title={
+                            <>
+                              <Group>
+                                <UnstyledButton>
+                                  <Group style={{ width: '100%', flexGrow: 1 }}>
+                                    <Avatar
+                                      size="lg"
+                                      radius="sm"
+                                      src={
+                                        n.transactorProfile?.ExtraData?.NFTProfilePictureUrl ||
+                                        n.transactorProfile?.ExtraData?.LargeProfilePicURL ||
+                                        `https://node.deso.org/api/v0/get-single-profile-picture/${n.notification.Metadata.TransactorPublicKeyBase58Check}` ||
+                                        null
+                                      }
+                                    />
+                                    <div>
+                                      <Box maw={222}>
+                                        <Text fw={500} size="sm" truncate="end">
+                                          {n.transactorProfile?.ExtraData?.DisplayName ||
+                                            n.transactorProfile?.Username ||
+                                            'Anon'}
+                                        </Text>
+                                      </Box>
+                                      <Text fw={500} size="xs">
+                                        @{n.transactorProfile?.Username || 'Anon'}
+                                      </Text>
+                                    </div>
+                                  </Group>
+                                </UnstyledButton>
+
+                                <UnstyledButton
+                                  component={Link}
+                                  href={`/post/${n.notification.Metadata?.CreatePostAssociationTxindexMetadata?.PostHashHex}`}
+                                >
+                                  <Group>
+                                    <Text fw={500} size="sm" td="">
+                                      Loved
+                                    </Text>
+
+                                    <Box maw={321}>
+                                      <Text size="sm" truncate="end">
+                                        {n.reactedPost?.Body || 'your post!'}
+                                      </Text>
+                                    </Box>
+                                  </Group>
+                                </UnstyledButton>
+                              </Group>
+                            </>
+                          }
+                        />
+                      </>
+                    )}
+                </>
+              ))}
+            </Tabs.Panel>
+            <Tabs.Panel value="Comments">
+              {notifications.map((n) => (
+                <>
+                  {/* Comments */}
+                  {n.notification.Metadata.TxnType === 'SUBMIT_POST' &&
+                    n.notification.Metadata.AffectedPublicKeys.length >= 2 &&
+                    n.notification.Metadata.AffectedPublicKeys[0].Metadata ===
+                      'ParentPosterPublicKeyBase58Check' && (
+                      <>
+                        <Notification
+                          withCloseButton={false}
+                          withBorder
+                          icon={<FaRegCommentDots size="1.3rem" />}
+                          radius="md"
+                          title={
+                            <>
+                              <Group justify="right">
+                                <Text c="dimmed" size="xs" fw={500}>
+                                  {formatDate(n.relatedModifiedPost?.TimestampNanos)} ago
+                                </Text>
+                              </Group>
+                              <Group>
+                                <UnstyledButton
+                                  component={Link}
+                                  href={`/wave/${n.relatedModifiedPost?.ProfileEntryResponse?.Username}`}
+                                >
+                                  <Group style={{ width: '100%', flexGrow: 1 }}>
+                                    <Avatar
+                                      size="lg"
+                                      radius="sm"
+                                      src={
+                                        n.transactorProfile?.ExtraData?.NFTProfilePictureUrl ||
+                                        n.relatedModifiedPost?.ProfileEntryResponse?.ExtraData
+                                          ?.LargeProfilePicURL ||
+                                        `https://node.deso.org/api/v0/get-single-profile-picture/${n.notification.Metadata.TransactorPublicKeyBase58Check}` ||
+                                        null
+                                      }
+                                    />
+                                    <div>
+                                      <Box maw={222}>
+                                        <Text fw={500} size="sm" truncate="end">
+                                          {n.relatedModifiedPost?.ProfileEntryResponse?.ExtraData
+                                            ?.DisplayName ||
+                                            n.relatedModifiedPost?.ProfileEntryResponse?.Username ||
+                                            'Anon'}
+                                        </Text>
+                                      </Box>
+                                      <Text fw={500} size="xs">
+                                        @
+                                        {n.relatedModifiedPost.ProfileEntryResponse.Username ||
+                                          'Anon'}
+                                      </Text>
+                                    </div>
+                                  </Group>
+                                </UnstyledButton>
+
+                                <UnstyledButton
+                                  component={Link}
+                                  href={`/post/${n.relatedParentPost?.PostHashHex}`}
+                                >
+                                  <Group>
+                                    <Text fw={500} size="sm" td="">
+                                      Commented on
+                                    </Text>
+                                  </Group>
+                                </UnstyledButton>
+                                <Box maw={321}>
+                                  <Text size="sm" truncate="end">
+                                    {n.relatedParentPost?.Body || ''}
+                                  </Text>
+                                </Box>
+                              </Group>
+                              <Space h="md" />
+                              <Post
+                                post={n.relatedModifiedPost}
+                                username={n.transactorProfile?.Username}
+                                key={n.transactorProfile?.PublicKeyBase58Check}
+                              />
+                            </>
+                          }
+                        />
+                      </>
+                    )}
+                </>
+              ))}
+            </Tabs.Panel>
+            <Tabs.Panel value="Diamonds">
+              {notifications.map((n) => (
+                <>
+                  {/* Diamonds */}
+                  {n.notification.Metadata.BasicTransferTxindexMetadata &&
+                    n.notification.Metadata.BasicTransferTxindexMetadata.DiamondLevel > 0 && (
+                      <>
+                        <Notification
+                          withCloseButton={false}
+                          withBorder
+                          icon={<IconDiamond />}
+                          radius="sm"
+                          title={
+                            <>
+                              <Group>
+                                <UnstyledButton
+                                  component={Link}
+                                  href={`/wave/${n.transactorProfile?.Username}`}
+                                >
+                                  <Group style={{ width: '100%', flexGrow: 1 }}>
+                                    <Avatar
+                                      size="lg"
+                                      radius="sm"
+                                      src={
+                                        n.transactorProfile?.ExtraData?.NFTProfilePictureUrl ||
+                                        n.transactorProfile?.ExtraData?.LargeProfilePicURL ||
+                                        `https://node.deso.org/api/v0/get-single-profile-picture/${n.notification.Metadata.TransactorPublicKeyBase58Check}` ||
+                                        null
+                                      }
+                                    />
+                                    <div>
+                                      <Box maw={222}>
+                                        <Text fw={500} size="sm" truncate="end">
+                                          {n.transactorProfile?.ExtraData?.DisplayName ||
+                                            n.transactorProfile?.Username ||
+                                            'Anon'}
+                                        </Text>
+                                      </Box>
+                                      <Text fw={500} size="xs">
+                                        @{n.transactorProfile?.Username || 'Anon'}
+                                      </Text>
+                                    </div>
+                                  </Group>
+                                </UnstyledButton>
+
+                                <UnstyledButton
+                                  component={Link}
+                                  href={`/wave/${n.transactorProfile?.Username}`}
+                                >
+                                  <Group>
+                                    <Text fw={500} size="sm">
+                                      Tipped{' '}
+                                      {convertToUSD(
+                                        n.notification?.Metadata?.BasicTransferTxindexMetadata
+                                          ?.TotalOutputNanos
+                                      )}{' '}
+                                      to
+                                    </Text>
+
+                                    <Box maw={321}>
+                                      <Text size="sm" truncate="end">
+                                        {n.relatedParentPost?.Body || ''}
+                                      </Text>
+                                    </Box>
+                                  </Group>
+                                </UnstyledButton>
+                              </Group>
+                            </>
+                          }
+                        />
+                      </>
+                    )}
+                </>
+              ))}
+            </Tabs.Panel>
+            <Tabs.Panel value="Reposts">
+              {notifications.map((n) => (
+                <>
+                  {/* Reposts & Quotes */}
+                  {n.notification.Metadata.TxnType === 'SUBMIT_POST' &&
+                    n.notification.Metadata.AffectedPublicKeys[0].Metadata ===
+                      'RepostedPublicKeyBase58Check' && (
+                      <>
+                        <Notification
+                          withCloseButton={false}
+                          withBorder
+                          icon={<IconRecycle size="1.3rem" />}
+                          radius="md"
+                          title={
+                            <>
+                              <Group justify="right">
+                                <Text c="dimmed" size="xs" fw={500}>
+                                  {formatDate(n.relatedModifiedPost?.TimestampNanos)} ago
+                                </Text>
+                              </Group>
+                              <Group>
+                                <UnstyledButton
+                                  component={Link}
+                                  href={`/wave/${n.relatedModifiedPost?.ProfileEntryResponse?.Username}`}
+                                >
+                                  <Group style={{ width: '100%', flexGrow: 1 }}>
+                                    <Avatar
+                                      size="lg"
+                                      radius="sm"
+                                      src={
+                                        n.transactorProfile?.ExtraData?.NFTProfilePictureUrl ||
+                                        n.relatedModifiedPost?.ProfileEntryResponse?.ExtraData
+                                          ?.LargeProfilePicURL ||
+                                        `https://node.deso.org/api/v0/get-single-profile-picture/${n.notification.Metadata.TransactorPublicKeyBase58Check}` ||
+                                        null
+                                      }
+                                    />
+                                    <div>
+                                      <Box maw={222}>
+                                        <Text fw={500} size="sm" truncate="end">
+                                          {n.relatedModifiedPost?.ProfileEntryResponse?.ExtraData
+                                            ?.DisplayName ||
+                                            n.relatedModifiedPost?.ProfileEntryResponse?.Username ||
+                                            'Anon'}
+                                        </Text>
+                                      </Box>
+                                      <Text fw={500} size="xs">
+                                        @
+                                        {n.relatedModifiedPost.ProfileEntryResponse.Username ||
+                                          'Anon'}
+                                      </Text>
+                                    </div>
+                                  </Group>
+                                </UnstyledButton>
+
+                                <UnstyledButton
+                                  component={Link}
+                                  href={`/post/${n.notification.Metadata.SubmitPostTxindexMetadata.PostHashBeingModifiedHex}`}
+                                >
+                                  <Text fw={500} size="sm" td="">
+                                    Reposted
+                                  </Text>
+                                </UnstyledButton>
+                              </Group>
+                              <Space h="md" />
+                              <Post
+                                post={n.relatedModifiedPost}
+                                username={n.transactorProfile?.Username}
+                                key={n.transactorProfile?.PublicKeyBase58Check}
+                              />
+                            </>
+                          }
+                        />
+                      </>
+                    )}
+                </>
+              ))}
+            </Tabs.Panel>
+            <Tabs.Panel value="CC">
+              {notifications.map((n) => (
+                <>
+                  {n.notification.Metadata.TxnType === 'CREATOR_COIN' &&
+                    n.notification.Metadata.CreatorCoinTxindexMetadata.OperationType === 'buy' && (
+                      <>
+                        <Notification
+                          withCloseButton={false}
+                          withBorder
+                          icon={<IconCoin />}
+                          radius="md"
+                          title={
+                            <>
+                              <Group>
+                                <UnstyledButton
+                                  component={Link}
+                                  href={`/wave/${n.transactorProfile?.Username}`}
+                                >
+                                  <Group style={{ width: '100%', flexGrow: 1 }}>
+                                    <Avatar
+                                      size="lg"
+                                      radius="sm"
+                                      src={
+                                        n.transactorProfile?.ExtraData?.NFTProfilePictureUrl ||
+                                        n.transactorProfile?.ExtraData?.LargeProfilePicURL ||
+                                        `https://node.deso.org/api/v0/get-single-profile-picture/${n.notification.Metadata.TransactorPublicKeyBase58Check}` ||
+                                        null
+                                      }
+                                    />
+                                    <div>
+                                      <Box maw={222}>
+                                        <Text fw={500} size="sm" truncate="end">
+                                          {n.transactorProfile?.ExtraData?.DisplayName ||
+                                            n.transactorProfile?.Username ||
+                                            'Anon'}
+                                        </Text>
+                                      </Box>
+                                      <Text fw={500} size="xs">
+                                        @{n.transactorProfile?.Username || 'Anon'}
+                                      </Text>
+                                    </div>
+                                  </Group>
+                                </UnstyledButton>
+                                <Text fw={500} size="sm">
+                                  Bought{' '}
+                                  {convertToUSD(
+                                    n.notification?.Metadata?.BasicTransferTxindexMetadata
+                                      ?.TotalOutputNanos
+                                  )}{' '}
+                                  of your Creator Coin!
+                                </Text>
+                              </Group>
+                            </>
+                          }
+                        />
+                      </>
+                    )}
+                </>
+              ))}
+            </Tabs.Panel>
+            <Tabs.Panel value="Sent">
+              {notifications.map((n) => (
+                <>
+                  {n.notification.Metadata.TxnType === 'BASIC_TRANSFER' &&
+                    n.notification.Metadata.AffectedPublicKeys[0].Metadata ===
+                      'BasicTransferOutput' &&
+                    n.notification.Metadata.AffectedPublicKeys[0].PublicKeyBase58Check ===
+                      currentUser.PublicKeyBase58Check &&
+                    n.notification.Metadata.BasicTransferTxindexMetadata.DiamondLevel === 0 && (
+                      <>
+                        <Notification
+                          icon={<GiMoneyStack size="1.3rem" />}
+                          withCloseButton={false}
+                          withBorder
+                          radius="md"
+                          title={
+                            <>
+                              <Group>
+                                <UnstyledButton
+                                  component={Link}
+                                  href={`/wave/${n.transactorProfile?.Username}`}
+                                >
+                                  <Group style={{ width: '100%', flexGrow: 1 }}>
+                                    <Avatar
+                                      size="lg"
+                                      radius="sm"
+                                      src={
+                                        n.transactorProfile?.ExtraData?.NFTProfilePictureUrl ||
+                                        n.transactorProfile?.ExtraData?.LargeProfilePicURL ||
+                                        `https://node.deso.org/api/v0/get-single-profile-picture/${n.notification.Metadata.TransactorPublicKeyBase58Check}` ||
+                                        null
+                                      }
+                                    />
+                                    <div>
+                                      <Box maw={222}>
+                                        <Text fw={500} size="sm" truncate="end">
+                                          {n.transactorProfile?.ExtraData?.DisplayName ||
+                                            n.transactorProfile?.Username ||
+                                            'Anon'}
+                                        </Text>
+                                      </Box>
+                                      <Text fw={500} size="xs">
+                                        @{n.transactorProfile?.Username || 'Anon'}
+                                      </Text>
+                                    </div>
+                                  </Group>
+                                </UnstyledButton>
+
+                                <Text fw={500} size="sm">
+                                  Sent you{' '}
+                                  {convertToUSD(
+                                    n.notification?.Metadata?.BasicTransferTxindexMetadata
+                                      ?.TotalOutputNanos
+                                  )}
+                                  !
+                                </Text>
+                              </Group>
+                            </>
+                          }
+                        />
+                      </>
+                    )}
+                </>
+              ))}
+            </Tabs.Panel>
+          </Tabs>
+        </Container>
+      )}
+      <Space h={222} />
     </div>
-    
   );
-};
+}
