@@ -15,6 +15,8 @@ import {
   Space,
   Menu,
   Avatar,
+  Center,
+  Container,
 } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import {
@@ -169,14 +171,7 @@ export function MantineHeader() {
                 </ActionIcon>
               </Tooltip>
 
-              <Menu
-                opened={opened}
-                onChange={setOpened}
-                offset={2}
-                shadow="md"
-                width={555}
-                withArrow
-              >
+              <Menu opened={opened} onChange={setOpened} offset={2} shadow="md" withArrow>
                 <Tooltip label="Notifications" withArrow position="bottom" offset={3}>
                   <Menu.Target>
                     <ActionIcon
@@ -214,7 +209,9 @@ export function MantineHeader() {
                   </Group>
 
                   <ScrollArea h={555}>
-                    <NotificationsPage />
+                    <Center>
+                      <NotificationsPage />
+                    </Center>
                   </ScrollArea>
                 </Menu.Dropdown>
               </Menu>
