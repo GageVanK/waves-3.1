@@ -9,6 +9,7 @@ import {
   countPostAssociations,
   getPostAssociations,
   updateFollowingStatus,
+  updateProfile,
 } from 'deso-protocol';
 import { useEffect, useState, useContext } from 'react';
 import { DeSoIdentityContext } from 'react-deso-protocol';
@@ -39,16 +40,17 @@ import {
 import {
   IconHeart,
   IconScriptPlus,
-  IconScriptMinus,
+  IconMessageShare,
   IconDiamond,
   IconRecycle,
   IconMessageCircle,
-  IconMessageShare,
+  IconDotsVertical,
   IconCheck,
   IconX,
   IconHeartFilled,
   IconDiamondFilled,
   IconHeartBroken,
+  IconBookmark,
 } from '@tabler/icons-react';
 import { Player, useAssetMetrics } from '@livepeer/react';
 import { useDisclosure, useHover } from '@mantine/hooks';
@@ -57,6 +59,8 @@ import { BsChatQuoteFill, BsInfoCircleFill } from 'react-icons/bs';
 import { FaVoteYea } from 'react-icons/fa';
 import { HiUsers, HiUserAdd, HiUserRemove } from 'react-icons/hi';
 import { RiUserUnfollowLine, RiUserAddLine } from 'react-icons/ri';
+import { TbPinned, TbPinnedOff } from 'react-icons/tb';
+import { GoBookmark, GoBookmarkSlash } from 'react-icons/go';
 import { replaceURLs } from '../helpers/linkHelper';
 import { getEmbedHeight, getEmbedWidth } from '../helpers/EmbedUrls';
 import formatDate from '@/formatDate';
@@ -79,10 +83,14 @@ export default function Post({ post, username, key }) {
   const [isHearted, setIsHearted] = useState();
   const [heartCount, setHeartCount] = useState(post.LikeCount);
   const [didHeartId, setDidHeartId] = useState();
+  const [didBookmarkId, setDidBookmarkId] = useState();
+  const [isBookmarked, setIsBookmarked] = useState(false);
   const [repostCount, setRepostCount] = useState(post.RepostCount);
   const [diamondCount, setDiamondCount] = useState(post.DiamondCount);
   const [commentCount, setCommentCount] = useState(post.CommentCount);
   const [isFollowingUser, setisFollowingUser] = useState(false);
+  const [didPinPost, setDidPinPost] = useState();
+
   const isWavesStream =
     post.VideoURLs && post.VideoURLs[0] && post.VideoURLs[0].includes('https://lvpr.tv/?v=');
 
@@ -397,7 +405,7 @@ export default function Post({ post, username, key }) {
     }
   };
 
-  //Love Post Function
+  //Delete Love Post Function
   const deleteHeart = async () => {
     try {
       await deletePostAssociation({
@@ -558,6 +566,165 @@ export default function Post({ post, username, key }) {
     }
   }, [didVote]);
 
+  // Pin Post
+  const handlePinPost = async (postHash) => {
+    try {
+      const updateData = {
+        UpdaterPublicKeyBase58Check: currentUser?.PublicKeyBase58Check,
+        ProfilePublicKeyBase58Check: '',
+        NewUsername: '',
+        MinFeeRateNanosPerKB: 1000,
+        NewCreatorBasisPoints: 100,
+        NewDescription: '',
+        NewStakeMultipleBasisPoints: 12500,
+        ExtraData: {
+          PinnedPostHashHex: postHash,
+        },
+      };
+
+      await updateProfile(updateData);
+
+      notifications.show({
+        title: 'Success',
+        icon: <IconCheck size="1.1rem" />,
+        color: 'blue',
+        message: 'Post has been pinned to your profile!',
+      });
+      setDidPinPost(true);
+    } catch (error) {
+      notifications.show({
+        title: 'Error Pinning post',
+        icon: <IconX size="1.1rem" />,
+        color: 'red',
+        message: error,
+      });
+      setDidPinPost(false);
+    }
+  };
+
+  // Pin Post
+  const handleUnpinPost = async () => {
+    try {
+      const updateData = {
+        UpdaterPublicKeyBase58Check: currentUser?.PublicKeyBase58Check,
+        ProfilePublicKeyBase58Check: '',
+        NewUsername: '',
+        MinFeeRateNanosPerKB: 1000,
+        NewCreatorBasisPoints: 100,
+        NewDescription: '',
+        NewStakeMultipleBasisPoints: 12500,
+        ExtraData: {
+          PinnedPostHashHex: '',
+        },
+      };
+
+      await updateProfile(updateData);
+
+      notifications.show({
+        title: 'Success',
+        icon: <IconCheck size="1.1rem" />,
+        color: 'blue',
+        message: 'Pinned Post Removed!',
+      });
+      setDidPinPost(false);
+    } catch (error) {
+      notifications.show({
+        title: 'Error Pinning post',
+        icon: <IconX size="1.1rem" />,
+        color: 'red',
+        message: error,
+      });
+      setDidPinPost(true);
+    }
+  };
+
+  // Getting if bookmarked post & getting association Id so user has option to delete the association
+  const getDidUserBookmark = async () => {
+    try {
+      const didBookmark = await getPostAssociations({
+        PostHashHex: post.PostHashHex,
+        TransactorPublicKeyBase58Check: currentUser?.PublicKeyBase58Check,
+        AssociationType: 'BOOKMARK',
+        AssociationValue: 'BOOKMARK',
+      });
+
+      setDidBookmarkId(didBookmark.Associations[0]?.AssociationID);
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+  useEffect(() => {
+    if (currentUser) {
+      getDidUserBookmark();
+    }
+  }, [currentUser, isBookmarked]);
+
+  // Bookmark Post
+  const handleBookmark = async () => {
+    try {
+      await createPostAssociation({
+        TransactorPublicKeyBase58Check: currentUser?.PublicKeyBase58Check,
+        PostHashHex: post.PostHashHex,
+        AssociationType: 'BOOKMARK',
+        AssociationValue: 'BOOKMARK',
+        MinFeeRateNanosPerKB: 1000,
+      });
+
+      notifications.show({
+        title: 'Success',
+        icon: <IconCheck size="1.1rem" />,
+        color: 'blue',
+        message: 'Post Bookmarked!',
+      });
+      setIsBookmarked(true);
+    } catch (error) {
+      notifications.show({
+        title: 'Error',
+        icon: <IconX size="1.1rem" />,
+        color: 'red',
+        message: `Something Happened: ${error}`,
+      });
+      setIsBookmarked(false);
+
+      console.error('Error submitting heart:', error);
+    }
+  };
+
+  // Bookmark Post
+  const handleRemoveBookmark = async () => {
+    try {
+      await deletePostAssociation({
+        TransactorPublicKeyBase58Check: currentUser?.PublicKeyBase58Check,
+        PostHashHex: post.PostHashHex,
+        AssociationID: didBookmarkId,
+        AssociationType: 'BOOKMARK',
+        AssociationValue: 'BOOKMARK',
+        MinFeeRateNanosPerKB: 1000,
+      });
+
+      notifications.show({
+        title: 'Success',
+        icon: <IconCheck size="1.1rem" />,
+        color: 'blue',
+        message: 'Bookmark Removed!',
+      });
+
+      setIsBookmarked(false);
+      setDidBookmarkId(null);
+    } catch (error) {
+      notifications.show({
+        title: 'Error',
+        icon: <IconX size="1.1rem" />,
+        color: 'red',
+        message: `Something Happened: ${error}`,
+      });
+
+      setIsBookmarked(true);
+      console.error('Error submitting heart:', error);
+    }
+  };
+
   return (
     <>
       <Modal opened={openedImage} onClose={closeImage} size="auto" centered>
@@ -665,17 +832,58 @@ export default function Post({ post, username, key }) {
           </Group>
 
           <Group mr={7} justify="right">
-            <Tooltip label="Go to Post">
-              <ActionIcon
-                color="blue"
-                size="sm"
-                variant="transparent"
-                component={Link}
-                href={`/post/${post.PostHashHex}`}
-              >
-                <IconMessageShare />
-              </ActionIcon>
-            </Tooltip>
+            <Menu shadow="md" width={144}>
+              <Menu.Target>
+                <ActionIcon color="blue" size="sm" variant="transparent">
+                  <IconDotsVertical />
+                </ActionIcon>
+              </Menu.Target>
+
+              <Menu.Dropdown>
+                <Menu.Item
+                  leftSection={<IconMessageShare style={{ width: rem(16), height: rem(16) }} />}
+                  component={Link}
+                  href={`/post/${post.PostHashHex}`}
+                >
+                  Visit Post
+                </Menu.Item>
+                {currentUser &&
+                  (isBookmarked || didBookmarkId ? (
+                    <Menu.Item
+                      onClick={() => handleRemoveBookmark()}
+                      leftSection={<GoBookmarkSlash style={{ width: rem(16), height: rem(16) }} />}
+                    >
+                      Remove
+                    </Menu.Item>
+                  ) : (
+                    <Menu.Item
+                      onClick={() => handleBookmark()}
+                      leftSection={<GoBookmark style={{ width: rem(16), height: rem(16) }} />}
+                    >
+                      Bookmark
+                    </Menu.Item>
+                  ))}
+
+                {currentUser?.PublicKeyBase58Check === post.PosterPublicKeyBase58Check &&
+                  (didPinPost ||
+                  currentUser.ProfileEntryResponse?.ExtraData?.PinnedPostHashHex ===
+                    post.PostHashHex ? (
+                    <Menu.Item
+                      onClick={() => handleUnpinPost()}
+                      leftSection={<TbPinnedOff style={{ width: rem(16), height: rem(16) }} />}
+                    >
+                      Unpin Post
+                    </Menu.Item>
+                  ) : (
+                    <Menu.Item
+                      onClick={() => handlePinPost(post.PostHashHex)}
+                      leftSection={<TbPinned style={{ width: rem(16), height: rem(16) }} />}
+                    >
+                      Pin Post
+                    </Menu.Item>
+                  ))}
+              </Menu.Dropdown>
+            </Menu>
           </Group>
         </div>
 

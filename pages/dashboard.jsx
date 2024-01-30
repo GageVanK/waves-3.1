@@ -17,11 +17,12 @@ import {
   Button,
   Modal,
   Loader,
-  TextInput,
+  ThemeIcon,
   Badge,
   rem,
 } from '@mantine/core';
 import { GiWaveCrest } from 'react-icons/gi';
+import { TbPinned, TbPinnedOff } from 'react-icons/tb';
 import { useState, useContext, useEffect, useRef } from 'react';
 import { DeSoIdentityContext } from 'react-deso-protocol';
 import {
@@ -29,8 +30,10 @@ import {
   getFollowersForUser,
   getPostsForUser,
   getNFTsForUser,
-  updateProfile,
+  getSinglePost,
   identity,
+  GetPost,
+  getPostAssociations,
 } from 'deso-protocol';
 import { Stream } from '../components/Stream/Stream';
 import { useDisclosure } from '@mantine/hooks';
@@ -42,16 +45,19 @@ import { replaceURLs } from '../helpers/linkHelper';
 import { TwitchEmbed } from 'react-twitch-embed';
 import { extractTwitchUsername } from '@/helpers/linkHelper';
 import { AddTwitch } from '@/components/AddTwitchModal';
+import { MdBookmarks } from 'react-icons/md';
 
 export default function ProfilePage() {
   const { currentUser } = useContext(DeSoIdentityContext);
   const [posts, setPosts] = useState([]);
   const [NFTs, setNFTs] = useState([]);
+  const [bookmarks, setBookmarks] = useState([]);
   const [followerInfo, setFollowers] = useState({ followers: 0, following: 0 });
   const userPublicKey = currentUser?.PublicKeyBase58Check;
   const [isLoadingPosts, setIsLoadingPosts] = useState(false);
   const [isLoadingNFTs, setIsLoadingNFTs] = useState(false);
   const [openedChat, { toggle }] = useDisclosure(true);
+  const [pinnedPost, setPinnedPost] = useState();
   const embed = useRef();
 
   const handleReady = (e) => {
@@ -74,6 +80,7 @@ export default function ProfilePage() {
     }
   };
 
+  //Get Posts for User
   const getPosts = async () => {
     try {
       setIsLoadingPosts(true);
@@ -90,6 +97,19 @@ export default function ProfilePage() {
     }
   };
 
+  // Get Pinned Post For User
+  const getPinnedPost = async () => {
+    try {
+      const postData = await getSinglePost({
+        PostHashHex: currentUser?.ProfileEntryResponse?.ExtraData?.PinnedPostHashHex,
+      });
+      setPinnedPost(postData.PostFound);
+    } catch (error) {
+      console.error('Error fetching livestream post:', error);
+    }
+  };
+
+  //Get NFTs For User
   const getNFTs = async () => {
     try {
       setIsLoadingNFTs(true);
@@ -105,11 +125,42 @@ export default function ProfilePage() {
     }
   };
 
+  // Get Bookmark Posts
+  const getBookmarkPosts = async () => {
+    try {
+      const res = await getPostAssociations({
+        TransactorPublicKeyBase58Check: currentUser?.PublicKeyBase58Check,
+        AssociationType: 'BOOKMARK',
+        AssociationValue: 'BOOKMARK',
+      });
+
+      const newBookmarks = [];
+
+      for (const association of res.Associations) {
+        const postHash = association.PostHashHex;
+        const response = await getSinglePost({ PostHashHex: postHash });
+
+        newBookmarks.push(response.PostFound);
+      }
+
+      setBookmarks(newBookmarks);
+    } catch (error) {
+      console.error('Error submitting heart:', error);
+    }
+  };
+
   useEffect(() => {
     if (currentUser) {
       getFollowers();
       getPosts();
       getNFTs();
+      getBookmarkPosts();
+    }
+  }, [currentUser]);
+
+  useEffect(() => {
+    if (currentUser?.ProfileEntryResponse?.ExtraData?.PinnedPostHashHex) {
+      getPinnedPost();
     }
   }, [currentUser]);
 
@@ -275,9 +326,29 @@ export default function ProfilePage() {
               <Tabs.Tab value="second">
                 <Text fz="sm">NFTs</Text>
               </Tabs.Tab>
+
+              <Tabs.Tab value="third">
+                <Text fz="sm">
+                  <MdBookmarks size="1.3rem" />
+                </Text>
+              </Tabs.Tab>
             </Tabs.List>
 
             <Tabs.Panel value="first">
+              {pinnedPost && (
+                <>
+                  <Paper shadow="xl" radius="md" p="xl">
+                    <ThemeIcon variant="light" radius="xs" size="md" color="red">
+                      <TbPinned />
+                    </ThemeIcon>
+
+                    <Post
+                      post={pinnedPost}
+                      username={currentUser?.ProfileEntryResponse?.Username}
+                    />
+                  </Paper>
+                </>
+              )}
               {isLoadingPosts ? (
                 <>
                   <Space h="md" />
@@ -349,6 +420,22 @@ export default function ProfilePage() {
                   </Center>
                 </>
               )}
+            </Tabs.Panel>
+
+            <Tabs.Panel value="third">
+              <>
+                {bookmarks?.length === 0 ? (
+                  <p>No bookmarks found</p>
+                ) : (
+                  bookmarks.map((bookmark) => (
+                    <Post
+                      key={bookmark?.PostHashHex}
+                      post={bookmark}
+                      username={bookmark.ProfileEntryResponse.Username}
+                    />
+                  ))
+                )}
+              </>
             </Tabs.Panel>
           </Tabs>
           <Space h={222} />
