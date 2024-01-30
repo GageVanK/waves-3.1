@@ -1,5 +1,5 @@
 import { useEffect, useState, useContext, useRef } from 'react';
-
+import Link from 'next/link';
 import { Player } from '@livepeer/react';
 import { IconScreenShare, IconCheck, IconHeartHandshake, IconX } from '@tabler/icons-react';
 import {
@@ -10,7 +10,7 @@ import {
   updateFollowingStatus,
   getIsFollowing,
   identity,
-  sendDeso,
+  getSinglePost,
   getExchangeRates,
 } from 'deso-protocol';
 import {
@@ -52,13 +52,14 @@ import { replaceURLs } from '../../helpers/linkHelper';
 import { SubscriptionModal } from '../../components/SubscriptionModal';
 import { extractTwitchUsername } from '@/helpers/linkHelper';
 import { TwitchEmbed } from 'react-twitch-embed';
+import { TbPinned, TbPinnedOff } from 'react-icons/tb';
 
 export default function Wave() {
   const router = useRouter();
   const { userName } = router.query;
   const [posts, setPosts] = useState([]);
   const [NFTs, setNFTs] = useState([]);
-  const [profile, setProfile] = useState([]);
+  const [profile, setProfile] = useState();
   const [followerInfo, setFollowers] = useState({ followers: 0, following: 0 });
   const { currentUser } = useContext(DeSoIdentityContext);
   const [isFollowingUser, setisFollowingUser] = useState(false);
@@ -69,6 +70,8 @@ export default function Wave() {
   const [openedChat, { toggle }] = useDisclosure(true);
   const [livestreamPost, setLivestreamPost] = useState(null);
   const [isLoadingLivestream, setIsLoadingLivestream] = useState(false);
+  const [pinnedPost, setPinnedPost] = useState();
+
   const embed = useRef();
 
   const handleReady = (e) => {
@@ -87,8 +90,11 @@ export default function Wave() {
         Username: userName,
         NoErrorOnMissing: true,
       });
-
-      setProfile(profileData.Profile);
+      console.log(profileData);
+      if (profileData !== null) {
+        setProfile(profileData.Profile);
+      }
+      
     } catch (error) {
       console.error('Error fetching user profile:', error);
     }
@@ -98,10 +104,10 @@ export default function Wave() {
   const fetchFollowerInfo = async () => {
     try {
       const following = await getFollowersForUser({
-        Username: userName,
+        Username: profile?.Username,
       });
       const followers = await getFollowersForUser({
-        Username: userName,
+        Username: profile?.Username,
         GetEntriesFollowingUsername: true,
       });
 
@@ -140,7 +146,7 @@ export default function Wave() {
     try {
       setIsLoadingPosts(true);
       const postData = await getPostsForUser({
-        Username: userName,
+        Username: profile?.Username,
         NumToFetch: 100,
       });
       setPosts(postData.Posts);
@@ -179,7 +185,7 @@ export default function Wave() {
         title: 'Success',
         icon: <IconCheck size="1.1rem" />,
         color: 'green',
-        message: `You successfully followed ${userName}`,
+        message: `You successfully followed ${profile?.Username}`,
       });
     } catch (error) {
       notifications.show({
@@ -223,7 +229,7 @@ export default function Wave() {
       setIsLoadingLivestream(true);
 
       const postData = await getPostsForUser({
-        Username: userName,
+        Username: profile?.Username,
         NumToFetch: 20,
       });
 
@@ -237,20 +243,35 @@ export default function Wave() {
     }
   };
 
+  // Getting Pinned Post
+  const fetchPinnedPost = async () => {
+    try {
+      const postData = await getSinglePost({
+        PostHashHex: profile?.ExtraData?.PinnedPostHashHex,
+      });
+      setPinnedPost(postData.PostFound);
+    } catch (error) {
+      console.error('Error fetching livestream post:', error);
+    }
+  };
+
   useEffect(() => {
     if (userName) {
-      fetchPosts();
-      fetchLivestreamPost();
       fetchProfile();
-      fetchFollowerInfo();
     }
   }, [userName]);
 
   useEffect(() => {
-    if (profile.PublicKeyBase58Check) {
+    if (profile) {
       fetchNFTs(25);
+      fetchFollowerInfo();
+      fetchPosts();
+      fetchLivestreamPost();
     }
-  }, [profile.PublicKeyBase58Check]);
+    if (profile?.ExtraData?.PinnedPostHashHex) {
+      fetchPinnedPost();
+    }
+  }, [profile]);
 
   useEffect(() => {
     if (profile?.PublicKeyBase58Check && currentUser?.PublicKeyBase58Check) {
@@ -260,294 +281,335 @@ export default function Wave() {
 
   return (
     <>
-      <Card ml={17} shadow="sm" padding="lg" radius="md" withBorder>
-        <Card.Section>
-          <Image
-            src={profile?.ExtraData?.FeaturedImageURL || null}
-            fallbackSrc="https://images.deso.org/4903a46ab3761c5d8bd57416ff411ff98b24b35fcf5480dde039eb9bae6eebe0.webp"
-            height={321}
-          />
-        </Card.Section>
-
-        <Group>
-          <>
-            <Avatar
-              src={
-                profile?.ExtraData?.LargeProfilePicURL ||
-                `https://node.deso.org/api/v0/get-single-profile-picture/${profile?.PublicKeyBase58Check}` ||
-                null
-              }
-              alt="Profile Picture"
-              className={classes.avatar}
-              size={123}
-              radius="md"
-              mt={-55}
-            />
-          </>
-          <div>
-            {profile !== null ? (
-              <>
-                <Text className={classes.Avatar} fw={500}>
-                  {profile?.ExtraData?.DisplayName || userName}
-                </Text>
-                <Text size="xs" className={classes.Avatar}>
-                  @{userName}
-                </Text>
-              </>
-            ) : (
-              <Text fz="lg" fw={777} truncate="end">
-                User does not exist
-              </Text>
-            )}
-          </div>
-        </Group>
-
-        <Space h="md" />
-        <Card.Section>
-          {livestreamPost ? (
-            <>
-              <Player
-                priority
-                controls
-                showPipButton
-                theme={{
-                  colors: {
-                    loading: '#3cdfff',
-                  },
-                }}
-                playbackId={extractPlaybackId(livestreamPost.VideoURLs[0])}
-                title={livestreamPost.ExtraData?.WavesStreamTitle}
+      {profile ? (
+        <>
+          <Card ml={17} shadow="sm" padding="lg" radius="md" withBorder>
+            <Card.Section>
+              <Image
+                src={profile?.ExtraData?.FeaturedImageURL || null}
+                fallbackSrc="https://images.deso.org/4903a46ab3761c5d8bd57416ff411ff98b24b35fcf5480dde039eb9bae6eebe0.webp"
+                height={321}
               />
-            </>
-          ) : (
-            <>
-              {profile.ExtraData?.TwitchURL ? (
-                <Group grow>
-                  <TwitchEmbed
-                    channel={extractTwitchUsername(profile.ExtraData?.TwitchURL)}
-                    withChat
-                    darkMode={true}
-                    onVideoReady={handleReady}
-                  />
-                </Group>
-              ) : (
-                <Divider
-                  my="xs"
-                  label={
-                    <>
-                      <Paper radius="sm" p="md" withBorder>
-                        <Text c="dimmed" fw={500} fs="md">
-                          Not live right now.
-                        </Text>
-                      </Paper>
-                    </>
+            </Card.Section>
+
+            <Group>
+              <>
+                <Avatar
+                  src={
+                    profile?.ExtraData?.LargeProfilePicURL ||
+                    `https://node.deso.org/api/v0/get-single-profile-picture/${profile?.PublicKeyBase58Check}` ||
+                    null
                   }
-                  labelPosition="center"
+                  alt="Profile Picture"
+                  className={classes.avatar}
+                  size={123}
+                  radius="md"
+                  mt={-55}
                 />
-              )}
-            </>
-          )}
-        </Card.Section>
-        <Space h="md" />
+              </>
+              <div>
+                {profile !== null ? (
+                  <>
+                    <Text className={classes.Avatar} fw={500}>
+                      {profile?.ExtraData?.DisplayName || profile?.Username}
+                    </Text>
+                    <Text size="xs" className={classes.Avatar}>
+                      @{profile?.Username}
+                    </Text>
+                  </>
+                ) : (
+                  <Text fz="lg" fw={777} truncate="end">
+                    User does not exist
+                  </Text>
+                )}
+              </div>
+            </Group>
 
-        <Space h="md" />
-
-        <Paper shadow="xl" radius="md" p="xl">
-          <Group>
-            <CopyButton value={`https://desowaves.vercel.app/wave/${userName}`} timeout={2000}>
-              {({ copied, copy }) => (
+            <Space h="md" />
+            <Card.Section>
+              {livestreamPost ? (
                 <>
-                  <Tooltip label={copied ? 'Wave Copied' : `Share ${userName}'s Wave`}>
-                    <Button radius="sm" size="sm" color={copied ? 'teal' : 'blue'} onClick={copy}>
-                      {copied ? (
+                  <Player
+                    priority
+                    controls
+                    showPipButton
+                    theme={{
+                      colors: {
+                        loading: '#3cdfff',
+                      },
+                    }}
+                    playbackId={extractPlaybackId(livestreamPost.VideoURLs[0])}
+                    title={livestreamPost.ExtraData?.WavesStreamTitle}
+                  />
+                </>
+              ) : (
+                <>
+                  {profile.ExtraData?.TwitchURL ? (
+                    <Group grow>
+                      <TwitchEmbed
+                        channel={extractTwitchUsername(profile.ExtraData?.TwitchURL)}
+                        withChat
+                        darkMode={true}
+                        onVideoReady={handleReady}
+                      />
+                    </Group>
+                  ) : (
+                    <Divider
+                      my="xs"
+                      label={
                         <>
-                          <IconCheck size={16} />
+                          <Paper radius="sm" p="md" withBorder>
+                            <Text c="dimmed" fw={500} fs="md">
+                              Not live right now.
+                            </Text>
+                          </Paper>
                         </>
-                      ) : (
-                        <>
-                          <IconScreenShare size={16} />
-                        </>
-                      )}
-                    </Button>
-                  </Tooltip>
+                      }
+                      labelPosition="center"
+                    />
+                  )}
                 </>
               )}
-            </CopyButton>
+            </Card.Section>
+            <Space h="md" />
 
-            <SubscriptionModal publickey={profile.PublicKeyBase58Check} username={userName} />
-          </Group>
-          <Space h="sm" />
-          <Text
-            fz="sm"
-            style={{
-              maxWidth: '100%',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'wrap',
-            }}
-            dangerouslySetInnerHTML={{
-              __html:
-                profile && profile.Description
-                  ? replaceURLs(profile.Description.replace(/\n/g, '<br>'))
-                  : '',
-            }}
-          />
-        </Paper>
+            <Space h="md" />
 
-        <Space h="sm" />
+            <Paper shadow="xl" radius="md" p="xl">
+              <Group>
+                <CopyButton value={`https://desowaves.vercel.app/wave/${userName}`} timeout={2000}>
+                  {({ copied, copy }) => (
+                    <>
+                      <Tooltip label={copied ? 'Wave Copied' : `Share ${userName}'s Wave`}>
+                        <Button
+                          radius="sm"
+                          size="sm"
+                          color={copied ? 'teal' : 'blue'}
+                          onClick={copy}
+                        >
+                          {copied ? (
+                            <>
+                              <IconCheck size={16} />
+                            </>
+                          ) : (
+                            <>
+                              <IconScreenShare size={16} />
+                            </>
+                          )}
+                        </Button>
+                      </Tooltip>
+                    </>
+                  )}
+                </CopyButton>
 
-        <Center>
-          {followerInfo.followers && followerInfo.followers.NumFollowers ? (
-            <Text fz="sm">Followers: {followerInfo.followers.NumFollowers}</Text>
-          ) : (
-            <Text fz="sm">Followers: 0</Text>
-          )}
+                <SubscriptionModal
+                  publickey={profile.PublicKeyBase58Check}
+                  username={profile?.Username}
+                />
+              </Group>
+              <Space h="sm" />
+              <Text
+                fz="sm"
+                style={{
+                  maxWidth: '100%',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'wrap',
+                }}
+                dangerouslySetInnerHTML={{
+                  __html:
+                    profile && profile.Description
+                      ? replaceURLs(profile.Description.replace(/\n/g, '<br>'))
+                      : '',
+                }}
+              />
+            </Paper>
 
-          <Space w="sm" />
-          <Divider size="sm" orientation="vertical" />
-          <Space w="sm" />
-          {followerInfo.following && followerInfo.following.NumFollowers ? (
-            <Text fz="sm">Following: {followerInfo.following.NumFollowers}</Text>
-          ) : (
-            <Text fz="sm">Following: 0</Text>
-          )}
-        </Center>
-        <Space h="md" />
-        <Space h="md" />
-        {currentUser ? (
-          isFollowingUser ? (
-            <Group wrap="nowrap" gap={1}>
+            <Space h="sm" />
+
+            <Center>
+              {followerInfo.followers && followerInfo.followers.NumFollowers ? (
+                <Text fz="sm">Followers: {followerInfo.followers.NumFollowers}</Text>
+              ) : (
+                <Text fz="sm">Followers: 0</Text>
+              )}
+
+              <Space w="sm" />
+              <Divider size="sm" orientation="vertical" />
+              <Space w="sm" />
+              {followerInfo.following && followerInfo.following.NumFollowers ? (
+                <Text fz="sm">Following: {followerInfo.following.NumFollowers}</Text>
+              ) : (
+                <Text fz="sm">Following: 0</Text>
+              )}
+            </Center>
+            <Space h="md" />
+            <Space h="md" />
+            {currentUser ? (
+              isFollowingUser ? (
+                <Group wrap="nowrap" gap={1}>
+                  <Button
+                    fullWidth
+                    variant="gradient"
+                    gradient={{ from: 'cyan', to: 'indigo' }}
+                    className={classes.button}
+                  >
+                    Following
+                  </Button>
+                  <Tooltip label="Unfollow User" withArrow arrowPosition="center">
+                    <ActionIcon variant="filled" color="indigo" size={36} onClick={unfollowUser}>
+                      <RiUserUnfollowLine size="1rem" stroke={1.5} />
+                    </ActionIcon>
+                  </Tooltip>
+                </Group>
+              ) : (
+                <Button
+                  fullWidth
+                  variant="gradient"
+                  gradient={{ from: 'cyan', to: 'indigo' }}
+                  radius="md"
+                  onClick={followUser}
+                >
+                  Follow
+                </Button>
+              )
+            ) : (
               <Button
                 fullWidth
                 variant="gradient"
                 gradient={{ from: 'cyan', to: 'indigo' }}
-                className={classes.button}
+                radius="md"
+                onClick={() => identity.login()}
               >
-                Following
+                Sign In to Follow
               </Button>
-              <Tooltip label="Unfollow User" withArrow arrowPosition="center">
-                <ActionIcon variant="filled" color="indigo" size={36} onClick={unfollowUser}>
-                  <RiUserUnfollowLine size="1rem" stroke={1.5} />
-                </ActionIcon>
-              </Tooltip>
-            </Group>
-          ) : (
-            <Button
-              fullWidth
-              variant="gradient"
-              gradient={{ from: 'cyan', to: 'indigo' }}
-              radius="md"
-              onClick={followUser}
-            >
-              Follow
+            )}
+          </Card>
+
+          <Space h="sm" />
+          <Center>
+            <Button variant="light" hiddenFrom="md" onClick={toggle}>
+              {openedChat ? <>Close Chat</> : <>Open Chat</>}
             </Button>
-          )
-        ) : (
-          <Button
-            fullWidth
-            variant="gradient"
-            gradient={{ from: 'cyan', to: 'indigo' }}
-            radius="md"
-            onClick={() => identity.login()}
-          >
-            Sign In to Follow
-          </Button>
-        )}
-      </Card>
+          </Center>
+          <Group justify="center" hiddenFrom="md">
+            <Collapse transitionDuration={1000} transitionTimingFunction="smooth" in={openedChat}>
+              <Chat handle={profile?.Username || 'Anon'} />
+            </Collapse>
+          </Group>
 
-      <Space h="sm" />
-      <Center>
-        <Button variant="light" hiddenFrom="md" onClick={toggle}>
-          {openedChat ? <>Close Chat</> : <>Open Chat</>}
-        </Button>
-      </Center>
-      <Group justify="center" hiddenFrom="md">
-        <Collapse transitionDuration={1000} transitionTimingFunction="smooth" in={openedChat}>
-          <Chat handle={userName || 'Anon'} />
-        </Collapse>
-      </Group>
+          <Space h="xl" />
 
-      <Space h="xl" />
+          <Tabs variant="default" defaultValue="first">
+            <Tabs.List grow>
+              <Tabs.Tab value="first">
+                <Text fz="sm">Posts</Text>
+              </Tabs.Tab>
 
-      <Tabs variant="default" defaultValue="first">
-        <Tabs.List grow>
-          <Tabs.Tab value="first">
-            <Text fz="sm">Posts</Text>
-          </Tabs.Tab>
+              <Tabs.Tab value="second">
+                <Text fz="sm">NFTs</Text>
+              </Tabs.Tab>
+            </Tabs.List>
 
-          <Tabs.Tab value="second">
-            <Text fz="sm">NFTs</Text>
-          </Tabs.Tab>
-        </Tabs.List>
+            <Tabs.Panel value="first">
+              {pinnedPost && (
+                <>
+                  <Paper shadow="xl" radius="md">
+                    <ThemeIcon variant="light" radius="xs" size="md" color="red">
+                      <TbPinned />
+                    </ThemeIcon>
 
-        <Tabs.Panel value="first">
-          {isLoadingPosts ? (
-            <>
+                    <Post post={pinnedPost} username={profile.Username} />
+                  </Paper>
+                </>
+              )}
+              {isLoadingPosts ? (
+                <>
+                  <Space h="md" />
+                  <Center>
+                    <Loader variant="bars" />
+                  </Center>
+                </>
+              ) : posts && posts.length > 0 ? (
+                posts.map((post) => (
+                  <Post post={post} username={profile?.Username} key={post.PostHashHex} />
+                ))
+              ) : (
+                // If no NFTs, show the Badge
+                <>
+                  <Space h="md" />
+                  <Center>
+                    <Badge
+                      size="md"
+                      radius="sm"
+                      variant="gradient"
+                      gradient={{ from: 'indigo', to: 'cyan', deg: 45 }}
+                    >
+                      Post something to view them here!
+                    </Badge>
+                  </Center>
+                </>
+              )}
+
+              <Space h={222} />
+            </Tabs.Panel>
+
+            <Tabs.Panel value="second">
+              {isLoadingNFTs ? (
+                <>
+                  <Space h="md" />
+                  <Center>
+                    <Loader variant="bars" />
+                  </Center>
+                </>
+              ) : // After loading, check if there are NFTs to display
+              NFTs && Object.keys(NFTs).length > 0 ? (
+                Object.keys(NFTs).map((key, index) => {
+                  const nft = NFTs[key];
+                  return (
+                    <Post
+                      post={nft.PostEntryResponse}
+                      username={nft.PostEntryResponse.ProfileEntryResponse.Username}
+                      key={nft.PostEntryResponse.PostHashHex}
+                    />
+                  );
+                })
+              ) : (
+                // If no NFTs, show the Badge
+                <>
+                  <Space h="md" />
+                  <Center>
+                    <Badge
+                      size="md"
+                      radius="sm"
+                      variant="gradient"
+                      gradient={{ from: 'indigo', to: 'cyan', deg: 45 }}
+                    >
+                      Mint something to view them here!
+                    </Badge>
+                  </Center>
+                </>
+              )}
+            </Tabs.Panel>
+          </Tabs>
+        </>
+      ) : (
+     
+          <Container>
+            <Paper shadow="xl" radius="md" p="md" withBorder>
+              <Group justify='center'>
+                <Text fw={500} size="md">User Does Not Exist!</Text>
+              </Group>
               <Space h="md" />
-              <Center>
-                <Loader variant="bars" />
-              </Center>
-            </>
-          ) : posts && posts.length > 0 ? (
-            posts.map((post) => <Post post={post} username={userName} key={post.PostHashHex} />)
-          ) : (
-            // If no NFTs, show the Badge
-            <>
-              <Space h="md" />
-              <Center>
-                <Badge
-                  size="md"
-                  radius="sm"
-                  variant="gradient"
-                  gradient={{ from: 'indigo', to: 'cyan', deg: 45 }}
-                >
-                  Post something to view them here!
-                </Badge>
-              </Center>
-            </>
-          )}
-
-          <Space h={222} />
-        </Tabs.Panel>
-
-        <Tabs.Panel value="second">
-          {isLoadingNFTs ? (
-            <>
-              <Space h="md" />
-              <Center>
-                <Loader variant="bars" />
-              </Center>
-            </>
-          ) : // After loading, check if there are NFTs to display
-          NFTs && Object.keys(NFTs).length > 0 ? (
-            Object.keys(NFTs).map((key, index) => {
-              const nft = NFTs[key];
-              return (
-                <Post
-                  post={nft.PostEntryResponse}
-                  username={nft.PostEntryResponse.ProfileEntryResponse.Username}
-                  key={nft.PostEntryResponse.PostHashHex}
-                />
-              );
-            })
-          ) : (
-            // If no NFTs, show the Badge
-            <>
-              <Space h="md" />
-              <Center>
-                <Badge
-                  size="md"
-                  radius="sm"
-                  variant="gradient"
-                  gradient={{ from: 'indigo', to: 'cyan', deg: 45 }}
-                >
-                  Mint something to view them here!
-                </Badge>
-              </Center>
-            </>
-          )}
-        </Tabs.Panel>
-      </Tabs>
+              <Group justify='center'>
+                <Button component={Link} href="/" radius="md">
+                  Go Home
+                </Button>
+              </Group>
+            </Paper>
+          </Container>
+       
+      )}
 
       <Modal opened={opened} onClose={close} size="auto" centered>
         <Image src={selectedImage} radius="md" alt="post-image" fit="contain" />

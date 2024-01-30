@@ -64,7 +64,6 @@ export default function NotificationsPage() {
         NumToFetch: 150,
         FetchStartIndex: -1,
       });
-      console.log(notificationData);
       // Initialize an array to store matched notifications with related posts and profiles
       const matchedNotifications = [];
 
@@ -155,8 +154,6 @@ export default function NotificationsPage() {
 
       setNotifications(matchedNotifications);
       setIsLoading(false);
-      // Now, matchedNotifications contains the notifications with related posts and profiles
-      console.log('Matched Notifications with Related Posts and Profiles:', matchedNotifications);
     } catch (error) {
       console.error('Error fetching user notifications:', error);
       setIsLoading(false);
@@ -712,7 +709,7 @@ export default function NotificationsPage() {
 
                                     <UnstyledButton
                                       component={Link}
-                                      href={`/wave/${n.transactorProfile?.Username}`}
+                                      href={`/post/${n.relatedParentPost?.PostHashHex}`}
                                     >
                                       <Group>
                                         <Text fw={500} size="sm">
@@ -930,6 +927,11 @@ export default function NotificationsPage() {
                           icon={<IconAt />}
                           title={
                             <>
+                              <Group justify="right">
+                                <Text c="dimmed" size="xs" fw={500}>
+                                  {formatDate(n.relatedModifiedPost?.TimestampNanos)} ago
+                                </Text>
+                              </Group>
                               <Group>
                                 <UnstyledButton
                                   component={Link}

@@ -69,7 +69,6 @@ export function MantineNavBar() {
       );
 
       setWavesFeed(filteredPosts);
-      console.log('Waves Feed:', wavesFeedData);
     } catch (error) {
       console.log('Something went wrong:', error);
     }
@@ -168,8 +167,8 @@ export function MantineNavBar() {
         <Space h="sm" />
         {currentUser ? (
           followingWaves && followingWaves.length > 0 ? (
-            followingWaves.map((post) => (
-              <HoverCard width={300} height={80} shadow="md" position="right">
+            followingWaves.map((post, index) => (
+              <HoverCard key={index} width={300} height={80} shadow="md" position="right">
                 <HoverCard.Target>
                   <UnstyledButton
                     component={Link}
