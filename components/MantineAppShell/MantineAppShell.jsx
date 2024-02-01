@@ -102,17 +102,20 @@ export function MantineAppShell({ children }) {
             </>
           )}
 
-          {(router.pathname.startsWith('/wave/') && profile) ||
-          (router.pathname === '/dashboard' && currentUser) ? (
+          {router.pathname.startsWith('/wave/') && profile && (
             <>
               <Space h="xl" />
-              <Chat
-                handle={profile?.Username || currentUser?.ProfileEntryResponse?.Username || 'Anon'}
-              />
+              <Chat handle={profile?.Username || 'Anon'} />
             </>
-          ) : (
-            <MantineAside />
           )}
+
+          {router.pathname === '/dashboard' && currentUser && (
+            <>
+              <Space h="xl" />
+              <Chat handle={currentUser?.ProfileEntryResponse?.Username || 'Anon'} />
+            </>
+          )}
+          <MantineAside />
         </AppShell.Aside>
 
         <AppShell.Footer>

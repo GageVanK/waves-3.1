@@ -41,6 +41,7 @@ import { BsPlusCircleDotted } from 'react-icons/bs';
 import { BiSearchAlt } from 'react-icons/bi';
 import { useRouter } from 'next/router';
 import { MdOutlineDashboard } from 'react-icons/md';
+import { LiaUsersSolid } from 'react-icons/lia';
 import NotificationsPage from '../../../pages/notifications';
 import { Search } from '@/components/Search';
 import { SignAndSubmitTx } from '@/components/SignAndSubmit/SubmitPost';
@@ -299,6 +300,19 @@ export function MantineHeader() {
                         {user.ProfileEntryResponse?.Username ?? user.PublicKeyBase58Check}
                       </Menu.Item>
                     ))}
+
+                    {currentUser && (
+                      <>
+                        <Menu.Divider />
+                        <Menu.Item
+                          component={Link}
+                          href="/closeFriends"
+                          leftSection={<LiaUsersSolid size={17} />}
+                        >
+                          Close Friends
+                        </Menu.Item>
+                      </>
+                    )}
 
                     <Menu.Divider />
 

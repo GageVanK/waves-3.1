@@ -94,7 +94,6 @@ export default function Wave() {
       if (profileData !== null) {
         setProfile(profileData.Profile);
       }
-      
     } catch (error) {
       console.error('Error fetching user profile:', error);
     }
@@ -594,21 +593,21 @@ export default function Wave() {
           </Tabs>
         </>
       ) : (
-     
-          <Container>
-            <Paper shadow="xl" radius="md" p="md" withBorder>
-              <Group justify='center'>
-                <Text fw={500} size="md">User Does Not Exist!</Text>
-              </Group>
-              <Space h="md" />
-              <Group justify='center'>
-                <Button component={Link} href="/" radius="md">
-                  Go Home
-                </Button>
-              </Group>
-            </Paper>
-          </Container>
-       
+        <Container>
+          <Paper shadow="xl" radius="md" p="md" withBorder>
+            <Group justify="center">
+              <Text fw={500} size="md">
+                User Does Not Exist!
+              </Text>
+            </Group>
+            <Space h="md" />
+            <Group justify="center">
+              <Button component={Link} href="/" radius="md">
+                Go Home
+              </Button>
+            </Group>
+          </Paper>
+        </Container>
       )}
 
       <Modal opened={opened} onClose={close} size="auto" centered>

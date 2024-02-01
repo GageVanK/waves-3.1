@@ -34,9 +34,7 @@ import {
   Divider,
   Accordion,
   useMantineTheme,
-  rem,
   Collapse,
-  UnstyledButton,
   ActionIcon,
   PasswordInput,
   rgba,
@@ -45,45 +43,31 @@ import {
   Container,
 } from '@mantine/core';
 import { TwitchEmbed } from 'react-twitch-embed';
-import {
-  IconCopy,
-  IconRocket,
-  IconCheck,
-  IconScreenShare,
-  IconAt,
-  IconBrandYoutube,
-  IconBrandTwitch,
-  IconKey,
-  IconUser,
-  IconX,
-} from '@tabler/icons-react';
+import { IconRocket, IconCheck, IconKey, IconX, IconScreenShare } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
 import { RiYoutubeLine } from 'react-icons/ri';
 import { BsTwitch } from 'react-icons/bs';
 import { DeSoIdentityContext } from 'react-deso-protocol';
 import { RiKickLine } from 'react-icons/ri';
 import { AiOutlineLink } from 'react-icons/ai';
-import { GrLaunch } from 'react-icons/gr';
 import { VscKey } from 'react-icons/vsc';
 import { BiUserCircle } from 'react-icons/bi';
 import { TiInfoLargeOutline } from 'react-icons/ti';
 import classes from './Stream.module.css';
 import { HowTo } from '@/components/HowTo/HowTo';
-import { BrowserStream } from '@/components/Stream/BrowserStream';
 import { BsExclamationCircle } from 'react-icons/bs';
 
 export const Stream = () => {
   const { currentUser } = useContext(DeSoIdentityContext);
-  const [streamName, setStreamName] = useState('');
+  const [obsStreamName, setObsStreamName] = useState('');
+  const [browserStreamName, setBrowserStreamName] = useState('');
   const [isFollowingWaves, setisFollowingWaves] = useState(false);
-  const [isButtonDisabled, setIsButtonDisabled] = useState(false);
   const [disable, { toggle }] = useDisclosure(false);
   const [progress, setProgress] = useState(0);
   const [loaded, setLoaded] = useState(false);
-  const [activeTab, setActiveTab] = useState('first');
-  const [didLaunch, setDidLaunch] = useState(false);
   const [openedMulti, { toggle: toggleMulti }] = useDisclosure(true);
   const embed = useRef();
+  const [didLaunch, setDidLaunch] = useState(false);
   const theme = useMantineTheme();
 
   const handleReady = (e) => {
@@ -104,26 +88,16 @@ export const Stream = () => {
     20
   );
 
-  // Allowing user to create streams via livepeers useCreateStream hook
-  const {
-    mutate: createStream,
-    data: stream,
-    status,
-  } = useCreateStream(streamName ? { name: streamName } : null);
+  const obs = useCreateStream(obsStreamName ? { name: obsStreamName } : null);
+  const browser = useCreateStream(browserStreamName ? { name: browserStreamName } : null);
 
-  const isLoading = useMemo(() => status === 'loading', [status]);
+  const isLoading = useMemo(
+    () => obs.status === 'loading' || browser.status === 'loading',
+    [obs.status, browser.status]
+  );
 
-  const streamId = stream?.id;
-
-  const { mutate: recordStream } = useUpdateStream({
-    streamId,
-    record: true,
-  });
-
-  const handleEnableRecording = async () => {
-    recordStream?.();
-  };
-  const [isRecordingEnabled, setIsRecordingEnabled] = useState(false);
+  const obsStreamId = obs.data?.id;
+  const browserStreamId = browser.data?.id;
 
   const [twitchStreamKey, setTwitchStreamKey] = useState('');
   const [twitchUsername, setTwitchUsername] = useState('');
@@ -134,7 +108,7 @@ export const Stream = () => {
     isSuccess,
     status: twitchStatus,
   } = useUpdateStream({
-    streamId,
+    obsStreamId,
     multistream: {
       targets: [
         {
@@ -174,7 +148,7 @@ export const Stream = () => {
   const [ytStreamKey, setYTStreamKey] = useState('');
   const [ytStreamURL, setYTStreamURL] = useState('');
   const { mutate: youtubeMultistream, status: ytmulti } = useUpdateStream({
-    streamId,
+    obsStreamId,
     multistream: {
       targets: [
         {
@@ -195,7 +169,7 @@ export const Stream = () => {
   const [kickStreamKey, setKickStreamKey] = useState('');
   const [kickStreamURL, setKickStreamURL] = useState('');
   const { mutate: kickMultistream, error: kickmulti } = useUpdateStream({
-    streamId,
+    obsStreamId,
     multistream: {
       targets: [
         {
@@ -235,10 +209,10 @@ export const Stream = () => {
   const postStreamToDeso = async () => {
     try {
       !interval.active && interval.start();
-
-      // Waves_Streams follows Streamers
+      // Streamer follows the Waves_Streams Account
+      // Waves_Streams follows Streamers back
       // Will be using the Waves_Streams Following Feed to display the livestreams on the Waves Feed
-      // Lazy way of building a feed that can be moderated
+      // Lazy way of moderating the Waves Feed
       if (isFollowingWaves === false) {
         await updateFollowingStatus({
           MinFeeRateNanosPerKB: 1000,
@@ -252,12 +226,16 @@ export const Stream = () => {
       await submitPost({
         UpdaterPublicKeyBase58Check: currentUser.PublicKeyBase58Check,
         BodyObj: {
-          Body: `${stream?.name}\nTo Subscribe and ensure the best viewing experience, visit: \nhttps://desowaves.vercel.app/wave/${currentUser.ProfileEntryResponse.Username}`,
-          VideoURLs: [`https://lvpr.tv/?v=${stream?.playbackId}`],
+          Body: `${
+            obsStreamName || browserStreamName
+          }\nTo Subscribe and ensure the best viewing experience, visit: \nhttps://desowaves.vercel.app/wave/${
+            currentUser.ProfileEntryResponse.Username
+          }`,
+          VideoURLs: [`https://lvpr.tv/?v=${obs.data?.playbackId || browser.data?.playbackId}`],
           ImageURLs: [],
         },
         PostExtraData: {
-          WavesStreamTitle: stream?.name,
+          WavesStreamTitle: obsStreamName || browserStreamName,
         },
       });
 
@@ -277,7 +255,6 @@ export const Stream = () => {
         message: `Something Happened: ${error}`,
       });
       console.log('something happened: ' + error);
-
       setDidLaunch(false);
       setLoaded(false);
       setProgress(0);
@@ -333,11 +310,16 @@ export const Stream = () => {
 
       <Tabs variant="pills" radius="md" defaultValue="first">
         <Tabs.List grow justify="center">
-          <Tabs.Tab value="first">Stream via OBS/StreamLabs</Tabs.Tab>
-          <Tabs.Tab value="second">Stream via Webcam (Mobile Friendly)</Tabs.Tab>
+          <Tabs.Tab value="first" disabled={obsStreamName || browserStreamName}>
+            Stream via OBS/StreamLabs
+          </Tabs.Tab>
+          <Tabs.Tab value="second" disabled={obsStreamName || browserStreamName}>
+            Stream via Webcam (Mobile Friendly)
+          </Tabs.Tab>
         </Tabs.List>
 
         <Space h="md" />
+
         <Tabs.Panel value="first">
           <Center>
             <Text fz="lg" fw={777} c="dimmed" truncate="end">
@@ -350,13 +332,13 @@ export const Stream = () => {
             variant="filled"
             radius="md"
             disabled={disable}
-            onChange={(e) => setStreamName(e.target.value)}
+            onChange={(e) => setObsStreamName(e.target.value)}
           />
           <Space h="xl" />
 
-          {status === 'success' && (
+          {obs.status === 'success' && (
             <>
-              {streamName ? (
+              {obsStreamName ? (
                 <>
                   <Container>
                     <Card shadow="sm" p="lg" radius="md" withBorder>
@@ -391,7 +373,7 @@ export const Stream = () => {
                       <Group justify="center">
                         <Title order={1}>
                           <Text radius="sm" fw={700} fz="lg">
-                            {streamName}
+                            {obsStreamName}
                           </Text>{' '}
                         </Title>
                       </Group>
@@ -400,7 +382,7 @@ export const Stream = () => {
 
                       <Space h="md" />
                       <Group justify="center">
-                        <CopyButton value={stream.streamKey} timeout={2000}>
+                        <CopyButton value={obs.data?.streamKey} timeout={2000}>
                           {({ copied, copy }) => (
                             <Button fullWidth color={copied ? 'teal' : 'blue'} onClick={copy}>
                               {copied ? (
@@ -688,8 +670,8 @@ export const Stream = () => {
                           loading: '#3cdfff',
                         },
                       }}
-                      title={stream?.name}
-                      playbackId={stream?.playbackId}
+                      title={obs.data?.name}
+                      playbackId={obs.data?.playbackId}
                       muted
                     />
                   </Group>
@@ -701,26 +683,26 @@ export const Stream = () => {
               )}
             </>
           )}
-          {status === 'loading' && (
+          {obs.status === 'loading' && (
             <Group justify="center">
               <Loader size="sm" />
             </Group>
           )}
-          {status === 'error' && (
+          {obs.status === 'error' && (
             <Group justify="center">
               <p>Error occurred while creating your wave.</p>
             </Group>
           )}
           <Space h="md" />
-          {!stream && (
+          {!obs.data && (
             <Group justify="center">
               <Button
                 radius="xl"
                 onClick={() => {
                   toggle();
-                  createStream?.(); // Create the stream and store the result
+                  obs.mutate?.(); // Create the stream and store the result
                 }}
-                disabled={isLoading || !createStream}
+                disabled={isLoading || !obs.mutate}
               >
                 Create Wave
               </Button>
@@ -728,8 +710,187 @@ export const Stream = () => {
           )}
           <Space h="md" />
         </Tabs.Panel>
+
         <Tabs.Panel value="second">
-          <BrowserStream />
+          <Center>
+            <Text fz="lg" fw={777} c="dimmed" truncate="end">
+              Start Streaming
+            </Text>
+          </Center>
+          <Space h="md" />
+          <Textarea
+            placeholder="Enter Stream Title"
+            variant="filled"
+            radius="md"
+            disabled={disable}
+            onChange={(e) => setBrowserStreamName(e.target.value)}
+          />
+          <Space h="xl" />
+
+          {browser.status === 'success' && (
+            <>
+              {browserStreamName ? (
+                <>
+                  <Container>
+                    <Card shadow="sm" p="lg" radius="md" withBorder>
+                      <Blockquote
+                        color="blue"
+                        radius="xl"
+                        iconSize={30}
+                        icon={<BsExclamationCircle size="1.2rem" />}
+                        mt="xl"
+                      >
+                        <Text fw={400} fs="italic">
+                          1. Allow Access to your Webcam & Microphone.
+                        </Text>
+                        <Space h="xs" />
+                        <Text fw={400} fs="italic">
+                          2. Once your stream is Active, Click 'Launch Wave' to bring your broadcast
+                          to Waves & all DeSo Apps!
+                        </Text>
+                      </Blockquote>
+                      <Space h="md" />
+                      <Group justify="center">
+                        <Title order={1}>
+                          <Text radius="sm" fw={700} fz="lg">
+                            {browserStreamName}
+                          </Text>{' '}
+                        </Title>
+                      </Group>
+
+                      <Divider my="sm" />
+
+                      <Space h="md" />
+                      <Group justify="center">
+                        <CopyButton value={browser.data?.streamKey} timeout={2000}>
+                          {({ copied, copy }) => (
+                            <Button fullWidth color={copied ? 'teal' : 'blue'} onClick={copy}>
+                              {copied ? (
+                                <>
+                                  <Center>
+                                    <h4>Stream Key</h4>
+                                    <Space w="xs" />
+                                    <IconCheck size={16} />
+                                  </Center>
+                                </>
+                              ) : (
+                                <>
+                                  <Center>
+                                    <h4>Stream Key</h4>
+                                    <Space w="xs" />
+                                    <IconKey size={16} />
+                                  </Center>
+                                </>
+                              )}
+                            </Button>
+                          )}
+                        </CopyButton>
+
+                        <Button
+                          rightSection={<IconRocket size="1rem" />}
+                          fullWidth
+                          className={classes.button}
+                          onClick={() => {
+                            postStreamToDeso();
+                          }}
+                          color={loaded ? 'teal' : theme.primaryColor}
+                          disabled={didLaunch}
+                        >
+                          <div className={classes.label}>
+                            {progress !== 0
+                              ? 'Launching Waves'
+                              : loaded
+                              ? 'Wave Launched'
+                              : 'Launch Wave'}
+                          </div>
+                          {progress !== 0 && (
+                            <Progress
+                              value={progress}
+                              className={classes.progress}
+                              color={rgba(theme.colors.blue[0], 0.35)}
+                              radius="sm"
+                            />
+                          )}
+                        </Button>
+                      </Group>
+                      <Space h="md" />
+                    </Card>
+                  </Container>
+
+                  <Space h="md" />
+                  {!didLaunch ? (
+                    <>
+                      <Blockquote
+                        color="red"
+                        radius="xl"
+                        iconSize={30}
+                        icon={<BsExclamationCircle size="1.2rem" />}
+                        mt="xl"
+                      >
+                        <Text fw={400} fs="italic">
+                          This stream playback is not public. Please click Launch Wave to make it
+                          accessible across all DeSo Apps.
+                        </Text>
+                      </Blockquote>
+                      <Space h="md" />
+                    </>
+                  ) : (
+                    <>
+                      <Blockquote
+                        color="blue"
+                        radius="xl"
+                        iconSize={30}
+                        icon={<BsExclamationCircle size="1.2rem" />}
+                        mt="xl"
+                      >
+                        <Text fw={400} fs="italic">
+                          Yay! Your wave is available on Waves and all DeSo Apps!
+                        </Text>
+                      </Blockquote>
+                      <Space h="md" />
+                    </>
+                  )}
+                  <Group justify="center">
+                    <Broadcast
+                      title={browser.data?.name}
+                      playbackId={browser.data?.playbackId}
+                      muted
+                    />
+                  </Group>
+                </>
+              ) : (
+                <Group justify="center">
+                  <p>Wave suspended. Refresh to create a new Wave.</p>
+                </Group>
+              )}
+            </>
+          )}
+          {browser.status === 'loading' && (
+            <Group justify="center">
+              <Loader size="sm" />
+            </Group>
+          )}
+          {browser.status === 'error' && (
+            <Group justify="center">
+              <p>Error occurred while creating your wave.</p>
+            </Group>
+          )}
+          <Space h="md" />
+          {!browser.data && (
+            <Group justify="center">
+              <Button
+                radius="xl"
+                onClick={() => {
+                  toggle();
+                  browser.mutate?.(); // Create the stream and store the result
+                }}
+                disabled={isLoading || !browser.mutate}
+              >
+                Create Wave
+              </Button>
+            </Group>
+          )}
+          <Space h="md" />
         </Tabs.Panel>
       </Tabs>
     </Paper>
