@@ -762,30 +762,6 @@ export const Stream = () => {
 
                       <Space h="md" />
                       <Group justify="center">
-                        <CopyButton value={browser.data?.streamKey} timeout={2000}>
-                          {({ copied, copy }) => (
-                            <Button fullWidth color={copied ? 'teal' : 'blue'} onClick={copy}>
-                              {copied ? (
-                                <>
-                                  <Center>
-                                    <h4>Stream Key</h4>
-                                    <Space w="xs" />
-                                    <IconCheck size={16} />
-                                  </Center>
-                                </>
-                              ) : (
-                                <>
-                                  <Center>
-                                    <h4>Stream Key</h4>
-                                    <Space w="xs" />
-                                    <IconKey size={16} />
-                                  </Center>
-                                </>
-                              )}
-                            </Button>
-                          )}
-                        </CopyButton>
-
                         <Button
                           rightSection={<IconRocket size="1rem" />}
                           fullWidth
