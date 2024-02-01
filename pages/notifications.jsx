@@ -285,7 +285,10 @@ export default function NotificationsPage() {
                               title={
                                 <>
                                   <Group>
-                                    <UnstyledButton>
+                                    <UnstyledButton
+                                      component={Link}
+                                      href={`/wave/${n.transactorProfile?.Username}`}
+                                    >
                                       <Group style={{ width: '100%', flexGrow: 1 }}>
                                         <Avatar
                                           size="lg"
@@ -996,7 +999,10 @@ export default function NotificationsPage() {
                           title={
                             <>
                               <Group>
-                                <UnstyledButton>
+                                <UnstyledButton
+                                  component={Link}
+                                  href={`/wave/${n.transactorProfile?.Username}`}
+                                >
                                   <Group style={{ width: '100%', flexGrow: 1 }}>
                                     <Avatar
                                       size="lg"

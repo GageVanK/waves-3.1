@@ -1,16 +1,8 @@
-
-import { useRouter } from 'next/router'
-import { useEffect, useState } from "react";
-import {
-  getSinglePost,
-  getPostsStateless
-} from "deso-protocol";
-import {
-  Space,
-  Container,
-  Group
-} from "@mantine/core";
-import Post from "@/components/Post";
+import { useRouter } from 'next/router';
+import { useEffect, useState } from 'react';
+import { getSinglePost, getPostsStateless } from 'deso-protocol';
+import { Space, Container, Group } from '@mantine/core';
+import Post from '@/components/Post';
 
 export default function PostPage() {
   const router = useRouter();
@@ -45,63 +37,54 @@ export default function PostPage() {
         });
 
         setSinglePost(postData.PostFound);
-       
+
         // Fetch top-level comments
         setTopLevelComments(postData.PostFound.Comments);
-
+        console.log(topLevelComments);
         // Fetch nested comments recursively
         const updatedTopLevelComments = await fetchCommentsRecursively(postData.PostFound.Comments);
         setTopLevelComments(updatedTopLevelComments);
+        console.log(updatedTopLevelComments);
       } catch (error) {
-        console.error("Error fetching post:", error);
+        console.error('Error fetching post:', error);
       }
     };
 
     if (postHash) {
       fetchPostAndComments();
-      
     }
   }, [postHash]);
 
-
   const Comment = ({ comment }) => (
-    
     <Container size="lg" key={comment.PostHashHex}>
-      <Post post={comment} username={comment.ProfileEntryResponse?.Username} />
+      <Post post={comment} username={comment.ProfileEntryResponse?.Username || 'Anon'} />
       {comment.Comments && comment.Comments.length > 0 && (
-        
         <Container style={{ marginLeft: '20px' }}>
           {comment.Comments.map((nestedComment) => (
-           
             <Comment key={nestedComment.PostHashHex} comment={nestedComment} />
-            
           ))}
         </Container>
-     
       )}
     </Container>
-   
   );
-  
 
   return (
     <>
-    <Space h={55}/>
+      <Space h={55} />
       <Container size="xxl">
-      <Post post={singlePost} username={singlePost.ProfileEntryResponse?.Username} key={singlePost.PostHashHex}/>
-      </Container>   
-      
+        <Post
+          post={singlePost}
+          username={singlePost.ProfileEntryResponse?.Username}
+          key={singlePost.PostHashHex}
+        />
+      </Container>
+
       {topLevelComments && topLevelComments.length > 0 ? (
-          topLevelComments.map((comment) => (
-            <Comment key={comment.PostHashHex} comment={comment} />
-          ))
-        ) : (
-          <>
-          
-          </>
-        )}
-      <Space h={111}/>
-   
+        topLevelComments.map((comment) => <Comment key={comment.PostHashHex} comment={comment} />)
+      ) : (
+        <></>
+      )}
+      <Space h={111} />
     </>
   );
-};
+}

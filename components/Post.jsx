@@ -10,6 +10,9 @@ import {
   getPostAssociations,
   updateFollowingStatus,
   updateProfile,
+  createUserAssociation,
+  deleteUserAssociation,
+  getUserAssociations
 } from 'deso-protocol';
 import { useEffect, useState, useContext } from 'react';
 import { DeSoIdentityContext } from 'react-deso-protocol';
@@ -59,12 +62,13 @@ import { BsChatQuoteFill, BsInfoCircleFill } from 'react-icons/bs';
 import { FaVoteYea } from 'react-icons/fa';
 import { HiUsers, HiUserAdd, HiUserRemove } from 'react-icons/hi';
 import { RiUserUnfollowLine, RiUserAddLine } from 'react-icons/ri';
-import { TbPinned, TbPinnedOff } from 'react-icons/tb';
+import { TbPinned, TbPinnedOff, TbFriends, TbFriendsOff  } from 'react-icons/tb';
 import { GoBookmark, GoBookmarkSlash } from 'react-icons/go';
 import { replaceURLs } from '../helpers/linkHelper';
 import { getEmbedHeight, getEmbedWidth } from '../helpers/EmbedUrls';
 import formatDate from '@/formatDate';
 import { SubscriptionModal } from './SubscriptionModal';
+import { PiUserCirclePlus, PiUserCircleMinus } from "react-icons/pi";
 
 export default function Post({ post, username, key }) {
   const { hovered, ref } = useHover();
@@ -85,12 +89,14 @@ export default function Post({ post, username, key }) {
   const [didHeartId, setDidHeartId] = useState();
   const [didBookmarkId, setDidBookmarkId] = useState();
   const [isBookmarked, setIsBookmarked] = useState(false);
+  const [isCloseFriend, setIsCloseFriend] = useState(false);
+  const [didCloseFriendId, setCloseFriendId] = useState();
   const [repostCount, setRepostCount] = useState(post.RepostCount);
   const [diamondCount, setDiamondCount] = useState(post.DiamondCount);
   const [commentCount, setCommentCount] = useState(post.CommentCount);
   const [isFollowingUser, setisFollowingUser] = useState(false);
   const [didPinPost, setDidPinPost] = useState();
-
+  
   const isWavesStream =
     post.VideoURLs && post.VideoURLs[0] && post.VideoURLs[0].includes('https://lvpr.tv/?v=');
 
@@ -691,7 +697,7 @@ export default function Post({ post, username, key }) {
     }
   };
 
-  // Bookmark Post
+  // Remove Bookmark Post
   const handleRemoveBookmark = async () => {
     try {
       await deletePostAssociation({
@@ -721,6 +727,93 @@ export default function Post({ post, username, key }) {
       });
 
       setIsBookmarked(true);
+      console.error('Error submitting heart:', error);
+    }
+  };
+
+    // Getting if bookmarked post & getting association Id so user has option to delete the association
+    const getDidCloseFriend = async () => {
+      try {
+        const didCF = await getUserAssociations({
+          TargetUserPublicKeyBase58Check: post.PosterPublicKeyBase58Check,
+          TransactorPublicKeyBase58Check: currentUser?.PublicKeyBase58Check,
+          AssociationType: 'CLOSE-FRIEND',
+          AssociationValue: 'CLOSE-FRIEND',
+        });
+  
+        setCloseFriendId(didCF.Associations[0]?.AssociationID);
+      } catch (error) {
+        console.error(error);
+      }
+    };
+  
+    useEffect(() => {
+      if (currentUser) {
+        getDidCloseFriend();
+      }
+    }, [currentUser, isCloseFriend]);
+
+   // Add Close Friend
+   const handleAddCloseFriend = async () => {
+    try {
+      await createUserAssociation({
+        TransactorPublicKeyBase58Check: currentUser?.PublicKeyBase58Check,
+        TargetUserPublicKeyBase58Check: post.PosterPublicKeyBase58Check,
+        AssociationType: 'CLOSE-FRIEND',
+        AssociationValue: 'CLOSE-FRIEND',
+        MinFeeRateNanosPerKB: 1000,
+      });
+
+      notifications.show({
+        title: 'Success',
+        icon: <IconCheck size="1.1rem" />,
+        color: 'blue',
+        message: `${username} added to Close Friends!`,
+      });
+      setIsCloseFriend(true);
+    } catch (error) {
+      notifications.show({
+        title: 'Error',
+        icon: <IconX size="1.1rem" />,
+        color: 'red',
+        message: `Something Happened: ${error}`,
+      });
+      setIsCloseFriend(false);
+
+      console.error('Error submitting heart:', error);
+    }
+  };
+
+  // Remove Bookmark Post
+  const handleRemoveCloseFriend = async () => {
+    try {
+      await deleteUserAssociation({
+        TransactorPublicKeyBase58Check: currentUser?.PublicKeyBase58Check,
+        TargetUserPublicKeyBase58Check: post.PosterPublicKeyBase58Check,
+        AssociationID: didCloseFriendId,
+        AssociationType: 'CLOSE-FRIEND',
+        AssociationValue: 'CLOSE-FRIEND',
+        MinFeeRateNanosPerKB: 1000,
+      });
+
+      notifications.show({
+        title: 'Success',
+        icon: <IconCheck size="1.1rem" />,
+        color: 'blue',
+        message: 'Bookmark Removed!',
+      });
+
+      setIsCloseFriend(false);
+      setCloseFriendId(null);
+    } catch (error) {
+      notifications.show({
+        title: 'Error',
+        icon: <IconX size="1.1rem" />,
+        color: 'red',
+        message: `Something Happened: ${error}`,
+      });
+
+      setIsCloseFriend(true);
       console.error('Error submitting heart:', error);
     }
   };
@@ -832,7 +925,7 @@ export default function Post({ post, username, key }) {
           </Group>
 
           <Group mr={7} justify="right">
-            <Menu shadow="md" width={144}>
+            <Menu shadow="md" width={177}>
               <Menu.Target>
                 <ActionIcon color="blue" size="sm" variant="transparent">
                   <IconDotsVertical />
@@ -864,9 +957,26 @@ export default function Post({ post, username, key }) {
                     </Menu.Item>
                   ))}
 
-                {currentUser?.PublicKeyBase58Check === post.PosterPublicKeyBase58Check &&
+            {currentUser && currentUser?.PublicKeyBase58Check !== post.PosterPublicKeyBase58Check &&
+                  (isCloseFriend || didCloseFriendId ? (
+                    <Menu.Item
+                      onClick={() => handleRemoveCloseFriend()}
+                      leftSection={<PiUserCircleMinus style={{ width: rem(16), height: rem(16) }} />}
+                    >
+                      Remove
+                    </Menu.Item>
+                  ) : (
+                    <Menu.Item
+                      onClick={() => handleAddCloseFriend()}
+                      leftSection={<PiUserCirclePlus style={{ width: rem(16), height: rem(16) }} />}
+                    >
+                      Add Close Friend
+                    </Menu.Item>
+                  ))}
+
+                {currentUser && currentUser?.PublicKeyBase58Check === post.PosterPublicKeyBase58Check &&
                   (didPinPost ||
-                  currentUser.ProfileEntryResponse?.ExtraData?.PinnedPostHashHex ===
+                  currentUser?.ProfileEntryResponse?.ExtraData?.PinnedPostHashHex ===
                     post.PostHashHex ? (
                     <Menu.Item
                       onClick={() => handleUnpinPost()}
