@@ -9,7 +9,8 @@ import {
   Paper,
   Group, 
   CopyButton, 
-  ActionIcon, Tooltip, Avatar, Blockquote
+  ActionIcon, Tooltip, Avatar, Blockquote,
+  Title
 } from "@mantine/core";
 import { DeSoIdentityContext } from "react-deso-protocol";
 import { useContext, useEffect ,useState } from "react";
@@ -67,9 +68,8 @@ useEffect(() => {
         my="xs"
         label={
           <>
-            <Text fw={444} fz="xl">
-              Wallet
-            </Text>
+          <Title order={3}>Wallet</Title>
+            
           </>
         }
         labelPosition="center"

@@ -1,9 +1,20 @@
-import { updateProfile, identity, submitPost, getSingleProfile, uploadImage } from 'deso-protocol';
-import React, { useContext, useRef, useState, useEffect, useMemo, useCallback } from 'react';
+import {
+  updateProfile,
+  identity,
+  submitPost,
+  getSingleProfile,
+  uploadImage,
+  getProfiles,
+  getAppState,
+  createNFT,
+} from 'deso-protocol';
+import React, { useContext, useRef, useState, useEffect, useMemo } from 'react';
 import { RiImageAddFill } from 'react-icons/ri';
 import { TbVideoPlus } from 'react-icons/tb';
 import {
-  Input,
+  Switch,
+  Stack,
+  UnstyledButton,
   Button,
   Center,
   Space,
@@ -11,7 +22,7 @@ import {
   Text,
   Textarea,
   Group,
-  Loader,
+  HoverCard,
   Avatar,
   Container,
   Tooltip,
@@ -20,13 +31,13 @@ import {
   FileButton,
   ActionIcon,
   Image,
-  Collapse,
-  useMantineTheme,
+  NumberInput,
+  rem,
   Notification,
   List,
   Box,
+  useMantineTheme,
 } from '@mantine/core';
-import { useDisclosure } from '@mantine/hooks';
 import { GiWaveCrest } from 'react-icons/gi';
 import { DeSoIdentityContext } from 'react-deso-protocol';
 import { Player, useAssetMetrics, useCreateAsset } from '@livepeer/react';
@@ -35,8 +46,9 @@ import { IconCheck, IconX } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
 import { FaPoll } from 'react-icons/fa';
 import { TiInfoLargeOutline } from 'react-icons/ti';
-import { MdAddChart, MdDeleteForever } from 'react-icons/md';
+import { MdDeleteForever } from 'react-icons/md';
 import { CgPlayListAdd } from 'react-icons/cg';
+import { BiSearchAlt } from 'react-icons/bi';
 import {
   getEmbedHeight,
   getEmbedURL,
@@ -45,7 +57,7 @@ import {
 } from '../../helpers/EmbedUrls';
 
 export const SignAndSubmitTx = ({ close }) => {
-  const { currentUser, isLoading } = useContext(DeSoIdentityContext);
+  const { currentUser } = useContext(DeSoIdentityContext);
   const [newUsername, setNewUsername] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
   const [isButtonDisabled, setIsButtonDisabled] = useState(true);
@@ -53,7 +65,6 @@ export const SignAndSubmitTx = ({ close }) => {
   const [embedUrl, setEmbedUrl] = useState('');
   const [imageFile, setImageFile] = useState(null);
   const [imageURL, setImageURL] = useState('');
-  const [opened, { toggle }] = useDisclosure(false);
   const resetImageRef = useRef(null);
   const resetVideoRef = useRef(null);
   const [video, setVideo] = useState(null);
@@ -62,6 +73,110 @@ export const SignAndSubmitTx = ({ close }) => {
   const [embed, setEmbed] = useState(false);
   const [pollOptions, setPollOptions] = useState(['', '']);
   const [isLoadingPost, setIsLoadingPost] = useState(false);
+  const [checkedNft, setCheckedNft] = useState(false);
+  const theme = useMantineTheme();
+  // NFT Stuff
+  const [nftCopies, setNftCopies] = useState(1);
+  const [creatorRoyaltyPercentage, setCreatorRoyaltyPercentage] = useState(0);
+  const [coinHolderRoyaltyPercentage, setCoinHolderRoyaltyPercentage] = useState(0);
+  const [checked, setChecked] = useState(false);
+  const [buyNowPrice, setBuyNowPrice] = useState();
+  const [minBidPrice, setMinBidPrice] = useState();
+  const [extraCreatorRoyalties, setExtraCreatorRoyalties] = useState({});
+  const [searchResults, setSearchResults] = useState([]);
+  const [value, setValue] = useState('');
+  const [desoUSD, setDesoUSD] = useState();
+
+  const getDesoUSD = async () => {
+    try {
+      const appState = await getAppState({
+        PublicKeyBase58Check: 'BC1YLjYHZfYDqaFxLnfbnfVY48wToduQVHJopCx4Byfk4ovvwT6TboD',
+      });
+      const desoUSDValue = appState.USDCentsPerDeSoCoinbase / 100;
+      console.log(appState);
+      setDesoUSD(desoUSDValue);
+    } catch (error) {
+      console.error('Error in getData:', error);
+    }
+  };
+
+  useEffect(() => {
+    getDesoUSD();
+  }, []);
+
+  const convertToBasisPoints = (percentage) => {
+    // Convert percentage to basis points
+    const basisPoints = percentage * 100;
+    return basisPoints;
+  };
+
+  const convertDESOToNanos = (deso) => {
+    // Convert DESO to nanos
+    const nanoToDeso = 0.000000001;
+    const nanos = Math.round(deso / nanoToDeso); // Round to the nearest integer
+
+    return Number(nanos); // Convert to BigInt
+  };
+
+  const convertDESOToUSD = (deso) => {
+    let usdValue = deso * desoUSD;
+
+    if (usdValue < 0.01) {
+      usdValue = 0.01;
+    }
+
+    return usdValue.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
+  };
+
+  const SearchUser = async () => {
+    const request = {
+      UsernamePrefix: value,
+      NumToFetch: 10,
+    };
+
+    const response = await getProfiles(request);
+    setSearchResults(response.ProfilesFound);
+  };
+
+  const handleInputChange = (event) => {
+    setValue(event.currentTarget.value);
+    SearchUser();
+  };
+
+  const handleAddCreator = (publicKey) => {
+    // Add selected creator with default percentage
+    setExtraCreatorRoyalties((prevState) => {
+      console.log('Adding creator:', publicKey, 'with default percentage 0');
+      return {
+        ...prevState,
+        [publicKey]: convertToBasisPoints(0), // Convert default percentage to basis points
+      };
+    });
+    // Clear search results and value
+    setSearchResults([]);
+    setValue('');
+  };
+
+  const handleCreatorPercentageChange = (publicKey, updatedPercentage) => {
+    console.log(`Updating percentage for creator ${publicKey} to ${updatedPercentage}`);
+    setExtraCreatorRoyalties((prevState) => {
+      const updatedMap = {
+        ...prevState,
+        [publicKey]: convertToBasisPoints(updatedPercentage), // Convert updated percentage to basis points
+      };
+      console.log('Updated map:', updatedMap);
+      return updatedMap;
+    });
+  };
+
+  const deleteExtraCreator = (publicKey) => {
+    setExtraCreatorRoyalties((prevState) => {
+      console.log('Deleting creator:', publicKey);
+      const newOptions = { ...prevState };
+      delete newOptions[publicKey];
+      return newOptions;
+    });
+  };
 
   const handlePollOptions = (index, value) => {
     // Create a new array with the same values, but with the updated value at the specified index
@@ -254,6 +369,25 @@ export const SignAndSubmitTx = ({ close }) => {
         },
       });
 
+      if (checkedNft && resp?.submittedTransactionResponse?.PostEntryResponse) {
+        const request = {
+          UpdaterPublicKeyBase58Check: currentUser?.PublicKeyBase58Check,
+          NFTPostHashHex: resp?.submittedTransactionResponse?.PostEntryResponse?.PostHashHex,
+          NumCopies: nftCopies,
+          NFTRoyaltyToCreatorBasisPoints: convertToBasisPoints(creatorRoyaltyPercentage),
+          NFTRoyaltyToCoinBasisPoints: convertToBasisPoints(coinHolderRoyaltyPercentage),
+          MinBidAmountNanos: convertDESOToNanos(minBidPrice),
+          BuyNowPriceNanos: (checked && convertDESOToNanos(buyNowPrice)) || undefined,
+          IsBuyNow: checked,
+          AdditionalDESORoyaltiesMap: extraCreatorRoyalties || undefined,
+          HasUnlockable: false,
+          IsForSale: true,
+          MinFeeRateNanosPerKB: 1000,
+        };
+
+        await createNFT(request);
+      }
+
       setIsLoadingPost(false);
 
       notifications.show({
@@ -271,6 +405,7 @@ export const SignAndSubmitTx = ({ close }) => {
       }
       if (embedUrl) {
         setEmbedUrl('');
+        setEmbed(false);
       }
       if (video) {
         setVideo(null);
@@ -282,6 +417,19 @@ export const SignAndSubmitTx = ({ close }) => {
         setPoll(false);
       }
 
+      if (checkedNft) {
+        setCheckedNft(false);
+        setNftCopies(1);
+        setCreatorRoyaltyPercentage(0);
+        setCoinHolderRoyaltyPercentage(0);
+        setExtraCreatorRoyalties({});
+        setMinBidPrice();
+        if (checked && buyNowPrice) {
+          setBuyNowPrice();
+          checked(false);
+        }
+      }
+
       if (typeof close === 'function') {
         close();
       }
@@ -289,14 +437,6 @@ export const SignAndSubmitTx = ({ close }) => {
       console.log(`something happened: ${err}`);
     }
   };
-
-  if (isLoading) {
-    return (
-      <Center>
-        <Loader variant="bars" />
-      </Center>
-    );
-  }
 
   if (!currentUser || !currentUser.BalanceNanos) {
     return (
@@ -412,12 +552,12 @@ export const SignAndSubmitTx = ({ close }) => {
                       setErrorMessage('Username is not available');
                       setIsButtonDisabled(true);
                     }
-                  } catch (error) {
+                  } catch (err) {
                     setIsButtonDisabled(true);
                     setErrorMessage('');
                   }
-                } catch (error) {
-                  console.log(error);
+                } catch (err) {
+                  console.log(err);
                 }
               }
             }}
@@ -679,7 +819,10 @@ export const SignAndSubmitTx = ({ close }) => {
           disabled={
             !bodyText.trim() ||
             isLoadingPost ||
-            (poll && pollOptions.filter((option) => option.trim() !== '').length < 2)
+            (poll && pollOptions.filter((option) => option.trim() !== '').length < 2) ||
+            (checkedNft && !minBidPrice) ||
+            (checkedNft && checked && !buyNowPrice) ||
+            (checkedNft && checked && minBidPrice < buyNowPrice)
           }
           loading={isLoadingPost}
         >
@@ -739,7 +882,242 @@ export const SignAndSubmitTx = ({ close }) => {
             <ImEmbed size="1.2rem" />
           </ActionIcon>
         </Tooltip>
+
+        <Switch
+          checked={checkedNft}
+          onChange={(event) => setCheckedNft(event.currentTarget.checked)}
+          color="teal"
+          size="sm"
+          label={
+            <Text fw={500} size="xs">
+              Mint as NFT
+            </Text>
+          }
+          thumbIcon={
+            checkedNft ? (
+              <IconCheck
+                style={{ width: rem(12), height: rem(12) }}
+                color={theme.colors.teal[6]}
+                stroke={3}
+              />
+            ) : (
+              <IconX
+                style={{ width: rem(12), height: rem(12) }}
+                color={theme.colors.red[6]}
+                stroke={3}
+              />
+            )
+          }
+        />
       </Group>
+
+      {checkedNft && (
+        <>
+          <Space h="xs" />
+          <NumberInput
+            variant="filled"
+            label="NFT Copies"
+            description="Sell Single or Multiple Copies."
+            defaultValue={1}
+            min={1}
+            allowDecimal={false}
+            allowNegative={false}
+            value={nftCopies}
+            onChange={setNftCopies}
+            thousandSeparator=","
+          />
+          <Space h="lg" />
+          <Divider />
+          <Space h="lg" />
+          <Group justify="right">
+            <Switch
+              checked={checked}
+              onChange={(event) => setChecked(event.currentTarget.checked)}
+              labelPosition="left"
+              label="Set as Buy Now"
+            />
+          </Group>
+          <Space h="xs" />
+          {checked && (
+            <>
+              <NumberInput
+                variant="filled"
+                label="Buy Now Price"
+                description="Set the buy now price for your NFT."
+                placeholder="Enter Amount in $DESO"
+                allowNegative={false}
+                hideControls
+                prefix="$DESO "
+                value={buyNowPrice}
+                onChange={setBuyNowPrice}
+                thousandSeparator=","
+              />
+              {checked && buyNowPrice && <> ≈ {convertDESOToUSD(buyNowPrice)}</>}
+              <Space h="xs" />
+            </>
+          )}
+          <NumberInput
+            variant="filled"
+            label="Minimum Bid"
+            description="Set the minimum bid price for your NFT."
+            placeholder="Enter Amount in $DESO"
+            allowNegative={false}
+            hideControls
+            prefix="$DESO "
+            value={minBidPrice}
+            onChange={setMinBidPrice}
+            thousandSeparator=","
+            error={
+              checked &&
+              buyNowPrice &&
+              minBidPrice < buyNowPrice &&
+              'Min Bid must be greater than or equal to Buy Now Price'
+            }
+          />
+          {minBidPrice && <> ≈ {convertDESOToUSD(minBidPrice)}</>}
+          <Space h="lg" />
+          <Divider />
+          <Space h="lg" />
+
+          <NumberInput
+            variant="filled"
+            label="Your Royalty Percentage"
+            description="This goes directly to you for secondary sales."
+            placeholder="Percents"
+            suffix="%"
+            defaultValue={0}
+            allowNegative={false}
+            value={creatorRoyaltyPercentage}
+            onChange={setCreatorRoyaltyPercentage}
+            min={0}
+            max={100}
+            error={creatorRoyaltyPercentage > 100 && 'Cannot be greater than 100%'}
+          />
+          <Space h="lg" />
+          <NumberInput
+            variant="filled"
+            label="Coin Holder Royalty Percentage"
+            description="This will be distributed to your Creator Coin Holders."
+            defaultValue={0}
+            placeholder="Percents"
+            suffix="%"
+            allowNegative={false}
+            min={0}
+            max={100}
+            value={coinHolderRoyaltyPercentage}
+            onChange={setCoinHolderRoyaltyPercentage}
+            error={coinHolderRoyaltyPercentage > 100 && 'Cannot be greater than 100%'}
+          />
+
+          <Space h="lg" />
+          <Group>
+            <Text fw={500} size="sm">
+              Add More Creator Royalties
+            </Text>
+            <HoverCard width={280} closeDelay={700} shadow="md">
+              <HoverCard.Target>
+                <ActionIcon radius="xl" size="xs" variant="subtle">
+                  <TiInfoLargeOutline />
+                </ActionIcon>
+              </HoverCard.Target>
+              <HoverCard.Dropdown>
+                <Text fw={500} size="xs">
+                  Set up royalties for specific Creators. This enables partnered content for NFT
+                  Sales.
+                </Text>
+              </HoverCard.Dropdown>
+            </HoverCard>
+          </Group>
+          <Space h="xs" />
+
+          <TextInput
+            leftSection={<BiSearchAlt size="1.2rem" />}
+            variant="filled"
+            placeholder="Search for a creator by username"
+            value={value}
+            onChange={handleInputChange}
+          />
+
+          <Space h="xs" />
+          {value && searchResults.length > 0 && (
+            <Stack>
+              {searchResults.map((profile) => (
+                <UnstyledButton
+                  key={profile.PublicKeyBase58Check}
+                  onClick={() => handleAddCreator(profile.PublicKeyBase58Check)}
+                >
+                  <Group>
+                    <Avatar
+                      src={
+                        `https://node.deso.org/api/v0/get-single-profile-picture/${profile.PublicKeyBase58Check}` ||
+                        null
+                      }
+                      radius="xl"
+                    />
+                    <div>
+                      <Text size="sm" fw={500}>
+                        {profile?.ExtraData?.DisplayName || profile.Username}
+                      </Text>
+                      <Text c="dimmed" size="xs">
+                        @{profile.Username}
+                      </Text>
+                    </div>
+                  </Group>
+                </UnstyledButton>
+              ))}
+            </Stack>
+          )}
+
+          <Space h="xs" />
+          {Object.entries(extraCreatorRoyalties).map(([publicKey, percentage], index) => (
+            <>
+              <Group key={index}>
+                <Group grow>
+                  <Group>
+                    <Avatar
+                      src={
+                        `https://node.deso.org/api/v0/get-single-profile-picture/${publicKey}` ||
+                        null
+                      }
+                      radius="xl"
+                    />
+                    <Box w={111}>
+                      <Text size="sm" fw={500} truncate="end">
+                        {publicKey}
+                      </Text>
+                    </Box>
+                  </Group>
+
+                  <NumberInput
+                    variant="filled"
+                    defaultValue={percentage}
+                    placeholder="Percents"
+                    suffix="%"
+                    min={0}
+                    max={100}
+                    allowNegative={false}
+                    onChange={(updatedValue) =>
+                      handleCreatorPercentageChange(publicKey, updatedValue)
+                    }
+                    error={percentage / 100 > 100 && 'Cannot be greater than 100%'}
+                  />
+                </Group>
+                <ActionIcon
+                  radius="xl"
+                  size="sm"
+                  color="red"
+                  variant="subtle"
+                  type="button"
+                  onClick={() => deleteExtraCreator(publicKey)}
+                >
+                  <MdDeleteForever />
+                </ActionIcon>
+              </Group>
+              <Space h="xs" />
+            </>
+          ))}
+        </>
+      )}
     </>
   );
 };

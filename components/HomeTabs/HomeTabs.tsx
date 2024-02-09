@@ -4,6 +4,7 @@ import { GiWaveCrest } from 'react-icons/gi';
 import { FaUsers } from 'react-icons/fa';
 import { useEffect, useState, useContext } from 'react';
 import { DeSoIdentityContext } from 'react-deso-protocol';
+import { RiTimerLine } from 'react-icons/ri';
 import classes from './HomeTabs.module.css';
 import { HotFeed } from '@/components/HotFeed/HotFeed';
 import { FollowerFeed } from '@/components/FollowerFeed/FollowerFeed';
@@ -30,9 +31,9 @@ export function HomeTabs() {
           </Tabs.Tab>
           <Tabs.Tab
             value="Hot"
-            leftSection={<BsFire style={{ width: rem(16), height: rem(16) }} />}
+            leftSection={<RiTimerLine style={{ width: rem(16), height: rem(16) }} />}
           >
-            Hot
+            New
           </Tabs.Tab>
         </Tabs.List>
 
