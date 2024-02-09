@@ -37,7 +37,7 @@ export default function PostPage() {
         });
 
         setSinglePost(postData.PostFound);
-
+        console.log(postData);
         // Fetch top-level comments
         setTopLevelComments(postData.PostFound.Comments);
         console.log(topLevelComments);

@@ -12,7 +12,7 @@ import {
   updateProfile,
   createUserAssociation,
   deleteUserAssociation,
-  getUserAssociations
+  getUserAssociations,
 } from 'deso-protocol';
 import { useEffect, useState, useContext } from 'react';
 import { DeSoIdentityContext } from 'react-deso-protocol';
@@ -37,12 +37,11 @@ import {
   Collapse,
   Modal,
   HoverCard,
-  RingProgress,
-  ScrollArea,
+  Title,
+  TextInput,
 } from '@mantine/core';
 import {
   IconHeart,
-  IconScriptPlus,
   IconMessageShare,
   IconDiamond,
   IconRecycle,
@@ -53,22 +52,23 @@ import {
   IconHeartFilled,
   IconDiamondFilled,
   IconHeartBroken,
-  IconBookmark,
 } from '@tabler/icons-react';
-import { Player, useAssetMetrics } from '@livepeer/react';
+import { Player } from '@livepeer/react';
 import { useDisclosure, useHover } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
 import { BsChatQuoteFill, BsInfoCircleFill } from 'react-icons/bs';
 import { FaVoteYea } from 'react-icons/fa';
-import { HiUsers, HiUserAdd, HiUserRemove } from 'react-icons/hi';
-import { RiUserUnfollowLine, RiUserAddLine } from 'react-icons/ri';
-import { TbPinned, TbPinnedOff, TbFriends, TbFriendsOff  } from 'react-icons/tb';
+import { RiUserUnfollowLine, RiUserAddLine, RiNftLine } from 'react-icons/ri';
+import { TbPinned, TbPinnedOff } from 'react-icons/tb';
 import { GoBookmark, GoBookmarkSlash } from 'react-icons/go';
+import { PiUserCirclePlus, PiUserCircleMinus } from 'react-icons/pi';
+import { FiEdit } from 'react-icons/fi';
+import { MdDeleteForever } from 'react-icons/md';
 import { replaceURLs } from '../helpers/linkHelper';
 import { getEmbedHeight, getEmbedWidth } from '../helpers/EmbedUrls';
 import formatDate from '@/formatDate';
 import { SubscriptionModal } from './SubscriptionModal';
-import { PiUserCirclePlus, PiUserCircleMinus } from "react-icons/pi";
+import { NftModal } from './NftModal';
 
 export default function Post({ post, username, key }) {
   const { hovered, ref } = useHover();
@@ -78,10 +78,14 @@ export default function Post({ post, username, key }) {
   const [tip, setTip] = useState(1);
   const [openedImage, { open: openImage, close: closeImage }] = useDisclosure(false);
   const [openedQuote, { open: openQuote, close: closeQuote }] = useDisclosure(false);
+  const [openedEdit, { open: openEdit, close: closeEdit }] = useDisclosure(false);
+  const [openedNft, { open: openNft, close: closeNft }] = useDisclosure(false);
+  const [openedHide, { open: openHide, close: closeHide }] = useDisclosure(false);
   const [openedDiamonds, { open: openDiamond, close: closeDiamond }] = useDisclosure(false);
   const [diamondLevelsUsd, setDiamondLevelsUsd] = useState([]);
   const [opened, { toggle }] = useDisclosure(false);
   const [quoteBody, setQuoteBody] = useState('');
+  const [editedPost, setEditedPost] = useState();
   const [voteCount, setVoteCount] = useState();
   const [didVote, setDidVote] = useState(false);
   const [isHearted, setIsHearted] = useState();
@@ -96,7 +100,7 @@ export default function Post({ post, username, key }) {
   const [commentCount, setCommentCount] = useState(post.CommentCount);
   const [isFollowingUser, setisFollowingUser] = useState(false);
   const [didPinPost, setDidPinPost] = useState();
-  
+  const [editBody, setEditBody] = useState(post?.Body || '');
   const isWavesStream =
     post.VideoURLs && post.VideoURLs[0] && post.VideoURLs[0].includes('https://lvpr.tv/?v=');
 
@@ -324,6 +328,73 @@ export default function Post({ post, username, key }) {
         color: 'red',
         message: 'Something Happened!',
       });
+      console.error('Error submitting Quote:', error);
+    }
+  };
+
+  // Edit Post Function
+  const editPost = async () => {
+    try {
+      const response = await submitPost({
+        UpdaterPublicKeyBase58Check: currentUser.PublicKeyBase58Check,
+        PostHashHexToModify: post.PostHashHex,
+        BodyObj: {
+          Body: editBody,
+          VideoURLs: [],
+          ImageURLs: [],
+        },
+      });
+      console.log('response', response);
+      notifications.show({
+        title: 'Success',
+        icon: <IconCheck size="1.1rem" />,
+        color: 'green',
+        message: 'Edit Submitted!',
+      });
+
+      if (response?.submittedTransactionResponse?.PostEntryResponse) {
+        setEditedPost(response?.submittedTransactionResponse?.PostEntryResponse);
+      }
+    } catch (error) {
+      notifications.show({
+        title: 'Error',
+        icon: <IconX size="1.1rem" />,
+        color: 'red',
+        message: 'Something Happened!',
+      });
+
+      console.error('Error submitting Quote:', error);
+    }
+  };
+
+  // Hide Post Function
+  const hidePost = async () => {
+    try {
+      await submitPost({
+        UpdaterPublicKeyBase58Check: currentUser.PublicKeyBase58Check,
+        PostHashHexToModify: post.PostHashHex,
+        BodyObj: {
+          Body: editBody,
+          VideoURLs: [],
+          ImageURLs: [],
+        },
+        IsHidden: true,
+      });
+      closeHide();
+      notifications.show({
+        title: 'Success',
+        icon: <IconCheck size="1.1rem" />,
+        color: 'green',
+        message: 'Post Hidden!',
+      });
+    } catch (error) {
+      notifications.show({
+        title: 'Error',
+        icon: <IconX size="1.1rem" />,
+        color: 'red',
+        message: 'Something Happened!',
+      });
+
       console.error('Error submitting Quote:', error);
     }
   };
@@ -731,30 +802,30 @@ export default function Post({ post, username, key }) {
     }
   };
 
-    // Getting if bookmarked post & getting association Id so user has option to delete the association
-    const getDidCloseFriend = async () => {
-      try {
-        const didCF = await getUserAssociations({
-          TargetUserPublicKeyBase58Check: post.PosterPublicKeyBase58Check,
-          TransactorPublicKeyBase58Check: currentUser?.PublicKeyBase58Check,
-          AssociationType: 'CLOSE-FRIEND',
-          AssociationValue: 'CLOSE-FRIEND',
-        });
-  
-        setCloseFriendId(didCF.Associations[0]?.AssociationID);
-      } catch (error) {
-        console.error(error);
-      }
-    };
-  
-    useEffect(() => {
-      if (currentUser) {
-        getDidCloseFriend();
-      }
-    }, [currentUser, isCloseFriend]);
+  // Getting if bookmarked post & getting association Id so user has option to delete the association
+  const getDidCloseFriend = async () => {
+    try {
+      const didCF = await getUserAssociations({
+        TargetUserPublicKeyBase58Check: post.PosterPublicKeyBase58Check,
+        TransactorPublicKeyBase58Check: currentUser?.PublicKeyBase58Check,
+        AssociationType: 'CLOSE-FRIEND',
+        AssociationValue: 'CLOSE-FRIEND',
+      });
 
-   // Add Close Friend
-   const handleAddCloseFriend = async () => {
+      setCloseFriendId(didCF.Associations[0]?.AssociationID);
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+  useEffect(() => {
+    if (currentUser) {
+      getDidCloseFriend();
+    }
+  }, [currentUser, isCloseFriend]);
+
+  // Add Close Friend
+  const handleAddCloseFriend = async () => {
     try {
       await createUserAssociation({
         TransactorPublicKeyBase58Check: currentUser?.PublicKeyBase58Check,
@@ -820,11 +891,89 @@ export default function Post({ post, username, key }) {
 
   return (
     <>
-      <Modal opened={openedImage} onClose={closeImage} size="auto" centered>
+      <Modal opened={openedImage} onClose={closeImage} centered zIndex={9999999999999}>
         <Image src={selectedImage} radius="md" alt="post-image" fit="contain" />
       </Modal>
 
-      <Modal radius="xl" opened={openedDiamonds} onClose={closeDiamond} size="md" centered>
+      <Modal
+        opened={openedNft}
+        onClose={closeNft}
+        centered
+        size="xl"
+        title={<Title order={2}>Mint As NFT</Title>}
+        zIndex={9999999999999}
+      >
+        <NftModal postHash={post?.PostHashHex} />
+      </Modal>
+
+      <Modal
+        zIndex={9999999999999}
+        radius="xl"
+        opened={openedHide}
+        onClose={closeHide}
+        centered
+        size="sm"
+        withCloseButton={false}
+      >
+        <>
+          <Text ta="center" fw={777} size="xl">
+            Hide Post?
+          </Text>
+          <Space h="lg" />
+          <Text c="dimmed" ta="center" size="sm">
+            Are you sure you want to hide this post? This cant be undone.
+          </Text>
+          <Space h="lg" />
+          <Group justify="center">
+            <Button color="red" onClick={hidePost}>
+              Hide
+            </Button>
+            <Button variant="default" onClick={closeHide}>
+              Cancel
+            </Button>
+          </Group>
+        </>
+      </Modal>
+
+      <Modal
+        opened={openedEdit}
+        onClose={closeEdit}
+        centered
+        size="xl"
+        title="Edit Post"
+        zIndex={9999999999999}
+      >
+        <>
+          <Textarea
+            value={editBody}
+            onChange={(event) => setEditBody(event.currentTarget.value)}
+            placeholder={editBody}
+            variant="filled"
+            size="lg"
+            style={{ flexGrow: 1, width: 'auto' }}
+          />
+          {editedPost ? (
+            <Post post={editedPost} username={username} />
+          ) : (
+            <Post post={post} username={username} />
+          )}
+
+          <Group justify="right">
+            <Button disabled={editBody === post.Body} onClick={editPost}>
+              Edit
+            </Button>
+          </Group>
+        </>
+      </Modal>
+
+      <Modal
+        radius="xl"
+        opened={openedDiamonds}
+        onClose={closeDiamond}
+        size="md"
+        centered
+        zIndex={9999999999999}
+      >
         <Text ta="center">Diamond Tip {username}'s Post</Text>
 
         <Group p="xl" grow h={111}>
@@ -860,7 +1009,7 @@ export default function Post({ post, username, key }) {
         </Group>
       </Modal>
 
-      <Modal opened={openedQuote} onClose={closeQuote} size="xl" centered>
+      <Modal opened={openedQuote} onClose={closeQuote} size="xl" centered zIndex={9999999999999}>
         <Group style={{ display: 'flex', alignItems: 'center', width: '100%' }}>
           <div style={{ marginRight: '10px' }}>
             <Avatar
@@ -882,7 +1031,7 @@ export default function Post({ post, username, key }) {
             size="lg"
             value={quoteBody}
             onChange={(event) => setQuoteBody(event.currentTarget.value)}
-            style={{ flexGrow: 1, width: 'auto' }} // Make Textarea grow to fill space
+            style={{ flexGrow: 1, width: 'auto' }}
           />
         </Group>
         <Group justify="right">
@@ -908,264 +1057,297 @@ export default function Post({ post, username, key }) {
 
         <Post post={post} username={username} />
       </Modal>
-
-      <Paper m="md" shadow="lg" radius="md" p={3} withBorder key={key}>
-        <Space h="xs" />
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-          }}
-        >
-          <Group ml={7} justify="left">
-            <Text c="dimmed" size="xs" fw={500}>
-              {formatDate(post.TimestampNanos)} ago
-            </Text>
-          </Group>
-
-          <Group mr={7} justify="right">
-            <Menu shadow="md" width={177}>
-              <Menu.Target>
-                <ActionIcon color="blue" size="sm" variant="transparent">
-                  <IconDotsVertical />
-                </ActionIcon>
-              </Menu.Target>
-
-              <Menu.Dropdown>
-                <Menu.Item
-                  leftSection={<IconMessageShare style={{ width: rem(16), height: rem(16) }} />}
-                  component={Link}
-                  href={`/post/${post.PostHashHex}`}
-                >
-                  Visit Post
-                </Menu.Item>
-                {currentUser &&
-                  (isBookmarked || didBookmarkId ? (
-                    <Menu.Item
-                      onClick={() => handleRemoveBookmark()}
-                      leftSection={<GoBookmarkSlash style={{ width: rem(16), height: rem(16) }} />}
-                    >
-                      Remove
-                    </Menu.Item>
-                  ) : (
-                    <Menu.Item
-                      onClick={() => handleBookmark()}
-                      leftSection={<GoBookmark style={{ width: rem(16), height: rem(16) }} />}
-                    >
-                      Bookmark
-                    </Menu.Item>
-                  ))}
-
-            {currentUser && currentUser?.PublicKeyBase58Check !== post.PosterPublicKeyBase58Check &&
-                  (isCloseFriend || didCloseFriendId ? (
-                    <Menu.Item
-                      onClick={() => handleRemoveCloseFriend()}
-                      leftSection={<PiUserCircleMinus style={{ width: rem(16), height: rem(16) }} />}
-                    >
-                      Remove
-                    </Menu.Item>
-                  ) : (
-                    <Menu.Item
-                      onClick={() => handleAddCloseFriend()}
-                      leftSection={<PiUserCirclePlus style={{ width: rem(16), height: rem(16) }} />}
-                    >
-                      Add Close Friend
-                    </Menu.Item>
-                  ))}
-
-                {currentUser && currentUser?.PublicKeyBase58Check === post.PosterPublicKeyBase58Check &&
-                  (didPinPost ||
-                  currentUser?.ProfileEntryResponse?.ExtraData?.PinnedPostHashHex ===
-                    post.PostHashHex ? (
-                    <Menu.Item
-                      onClick={() => handleUnpinPost()}
-                      leftSection={<TbPinnedOff style={{ width: rem(16), height: rem(16) }} />}
-                    >
-                      Unpin Post
-                    </Menu.Item>
-                  ) : (
-                    <Menu.Item
-                      onClick={() => handlePinPost(post.PostHashHex)}
-                      leftSection={<TbPinned style={{ width: rem(16), height: rem(16) }} />}
-                    >
-                      Pin Post
-                    </Menu.Item>
-                  ))}
-              </Menu.Dropdown>
-            </Menu>
-          </Group>
-        </div>
-
-        <Space h="sm" />
-        <Group justify="center" style={{ display: 'flex', alignItems: 'center' }}>
-          <HoverCard width={333} shadow="md" position="right">
-            <HoverCard.Target>
-              <UnstyledButton
-                component={Link}
-                href={`/wave/${username}`}
-                style={{ display: 'flex', alignItems: 'center' }}
-              >
-                <Avatar
-                  radius="xl"
-                  size="lg"
-                  src={
-                    post.ProfileEntryResponse?.ExtraData?.LargeProfilePicURL ||
-                    `https://node.deso.org/api/v0/get-single-profile-picture/${
-                      post.ProfileEntryResponse?.PublicKeyBase58Check ||
-                      post.PosterPublicKeyBase58Check
-                    }` ||
-                    null
-                  }
-                />
-
-                <Space w="xs" />
-                <div>
-                  <Box w={111}>
-                    <Text fw={500} size="sm" truncate="end">
-                      {post.ProfileEntryResponse?.ExtraData?.DisplayName || username}
-                    </Text>
-                  </Box>
-                  <Text size="xs" truncate="end">
-                    @{username}
-                  </Text>
-                </div>
-              </UnstyledButton>
-            </HoverCard.Target>
-
-            <HoverCard.Dropdown width={280} shadow="md">
-              <Group justify="space-between">
-                <Avatar
-                  radius="md"
-                  size="xl"
-                  src={
-                    post.ProfileEntryResponse?.ExtraData?.LargeProfilePicURL ||
-                    `https://node.deso.org/api/v0/get-single-profile-picture/${
-                      post.ProfileEntryResponse?.PublicKeyBase58Check ||
-                      post.PosterPublicKeyBase58Check
-                    }` ||
-                    null
-                  }
-                />
-
-                {currentUser && currentUser.ProfileEntryResponse?.Username !== username ? (
-                  <>
-                    {isFollowingUser ? (
-                      <Tooltip label={`Unfollow @${username}`} withArrow arrowPosition="center">
-                        <ActionIcon variant="default" size={36} onClick={unfollowUser} mb={22}>
-                          <RiUserUnfollowLine size="1.2rem" stroke={1.5} />
-                        </ActionIcon>
-                      </Tooltip>
-                    ) : (
-                      <Tooltip label={`Follow @${username}`} withArrow arrowPosition="center">
-                        <ActionIcon variant="default" size={36} onClick={followUser} mb={22}>
-                          <RiUserAddLine size="1.2rem" stroke={1.5} />
-                        </ActionIcon>
-                      </Tooltip>
-                    )}
-                  </>
-                ) : null}
-              </Group>
-              <Space h="xs" />
-
-              <Box w={255}>
-                <Text fw={500} truncate="end">
-                  {post.ProfileEntryResponse?.ExtraData?.DisplayName || username}
-                </Text>
-              </Box>
-              <Text size="xs" truncate="end">
-                @{username}
+      {post.IsHidden ? (
+        <Paper m="md" shadow="lg" radius="md" p={3} withBorder>
+          <Space h="lg" />
+          <Text ta="center" size="sm" fw={500}>
+            Post Hidden By Author.
+          </Text>
+          <Space h="lg" />
+        </Paper>
+      ) : (
+        <Paper m="md" shadow="lg" radius="md" p={3} withBorder key={key}>
+          <Space h="xs" />
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+            }}
+          >
+            <Group ml={7} justify="left">
+              <Text c="dimmed" size="xs" fw={500}>
+                {formatDate(post.TimestampNanos)} ago
               </Text>
+            </Group>
 
-              <Space h="xl" />
+            <Group mr={7} justify="right">
+              <Menu shadow="md" width={177}>
+                <Menu.Target>
+                  <ActionIcon color="blue" size="sm" variant="transparent">
+                    <IconDotsVertical />
+                  </ActionIcon>
+                </Menu.Target>
 
+                <Menu.Dropdown>
+                  <Menu.Item
+                    leftSection={<IconMessageShare style={{ width: rem(16), height: rem(16) }} />}
+                    component={Link}
+                    href={`/post/${post.PostHashHex}`}
+                  >
+                    Visit Post
+                  </Menu.Item>
+
+                  {!post.IsNFT &&
+                    currentUser &&
+                    currentUser?.PublicKeyBase58Check === post.PosterPublicKeyBase58Check && (
+                      <Menu.Item
+                        onClick={openNft}
+                        leftSection={<RiNftLine style={{ width: rem(16), height: rem(16) }} />}
+                      >
+                        Mint NFT
+                      </Menu.Item>
+                    )}
+                  {currentUser &&
+                    currentUser?.PublicKeyBase58Check === post.PosterPublicKeyBase58Check && (
+                      <Menu.Item
+                        onClick={openEdit}
+                        leftSection={<FiEdit style={{ width: rem(16), height: rem(16) }} />}
+                      >
+                        Edit
+                      </Menu.Item>
+                    )}
+
+                  {currentUser &&
+                    (isBookmarked || didBookmarkId ? (
+                      <Menu.Item
+                        onClick={() => handleRemoveBookmark()}
+                        leftSection={
+                          <GoBookmarkSlash style={{ width: rem(16), height: rem(16) }} />
+                        }
+                      >
+                        Remove
+                      </Menu.Item>
+                    ) : (
+                      <Menu.Item
+                        onClick={() => handleBookmark()}
+                        leftSection={<GoBookmark style={{ width: rem(16), height: rem(16) }} />}
+                      >
+                        Bookmark
+                      </Menu.Item>
+                    ))}
+
+                  {currentUser &&
+                    currentUser?.PublicKeyBase58Check !== post.PosterPublicKeyBase58Check &&
+                    (isCloseFriend || didCloseFriendId ? (
+                      <Menu.Item
+                        onClick={() => handleRemoveCloseFriend()}
+                        leftSection={
+                          <PiUserCircleMinus style={{ width: rem(16), height: rem(16) }} />
+                        }
+                      >
+                        Remove
+                      </Menu.Item>
+                    ) : (
+                      <Menu.Item
+                        onClick={() => handleAddCloseFriend()}
+                        leftSection={
+                          <PiUserCirclePlus style={{ width: rem(16), height: rem(16) }} />
+                        }
+                      >
+                        Add Close Friend
+                      </Menu.Item>
+                    ))}
+
+                  {currentUser &&
+                    currentUser?.PublicKeyBase58Check === post.PosterPublicKeyBase58Check &&
+                    (didPinPost ||
+                    currentUser?.ProfileEntryResponse?.ExtraData?.PinnedPostHashHex ===
+                      post.PostHashHex ? (
+                      <Menu.Item
+                        onClick={() => handleUnpinPost()}
+                        leftSection={<TbPinnedOff style={{ width: rem(16), height: rem(16) }} />}
+                      >
+                        Unpin Post
+                      </Menu.Item>
+                    ) : (
+                      <Menu.Item
+                        onClick={() => handlePinPost(post.PostHashHex)}
+                        leftSection={<TbPinned style={{ width: rem(16), height: rem(16) }} />}
+                      >
+                        Pin Post
+                      </Menu.Item>
+                    ))}
+
+                  {currentUser &&
+                    currentUser?.PublicKeyBase58Check === post.PosterPublicKeyBase58Check && (
+                      <Menu.Item
+                        color="red"
+                        onClick={openHide}
+                        leftSection={
+                          <MdDeleteForever style={{ width: rem(16), height: rem(16) }} />
+                        }
+                      >
+                        Hide
+                      </Menu.Item>
+                    )}
+                </Menu.Dropdown>
+              </Menu>
+            </Group>
+          </div>
+
+          <Space h="sm" />
+          <Group justify="center" style={{ display: 'flex', alignItems: 'center' }}>
+            <HoverCard width={333} shadow="md" position="right">
+              <HoverCard.Target>
+                <UnstyledButton
+                  component={Link}
+                  href={`/wave/${username}`}
+                  style={{ display: 'flex', alignItems: 'center' }}
+                >
+                  <Avatar
+                    radius="xl"
+                    size="lg"
+                    src={
+                      post.ProfileEntryResponse?.ExtraData?.LargeProfilePicURL ||
+                      `https://node.deso.org/api/v0/get-single-profile-picture/${
+                        post.ProfileEntryResponse?.PublicKeyBase58Check ||
+                        post.PosterPublicKeyBase58Check
+                      }` ||
+                      null
+                    }
+                  />
+
+                  <Space w="xs" />
+                  <div>
+                    <Box w={111}>
+                      <Text fw={500} size="sm" truncate="end">
+                        {post.ProfileEntryResponse?.ExtraData?.DisplayName || username}
+                      </Text>
+                    </Box>
+                    <Text size="xs" truncate="end">
+                      @{username}
+                    </Text>
+                  </div>
+                </UnstyledButton>
+              </HoverCard.Target>
+
+              <HoverCard.Dropdown width={280} shadow="md">
+                <Group justify="space-between">
+                  <Avatar
+                    radius="md"
+                    size="xl"
+                    src={
+                      post.ProfileEntryResponse?.ExtraData?.LargeProfilePicURL ||
+                      `https://node.deso.org/api/v0/get-single-profile-picture/${
+                        post.ProfileEntryResponse?.PublicKeyBase58Check ||
+                        post.PosterPublicKeyBase58Check
+                      }` ||
+                      null
+                    }
+                  />
+
+                  {currentUser && currentUser.ProfileEntryResponse?.Username !== username ? (
+                    <>
+                      {isFollowingUser ? (
+                        <Tooltip label={`Unfollow @${username}`} withArrow arrowPosition="center">
+                          <ActionIcon variant="default" size={36} onClick={unfollowUser} mb={22}>
+                            <RiUserUnfollowLine size="1.2rem" stroke={1.5} />
+                          </ActionIcon>
+                        </Tooltip>
+                      ) : (
+                        <Tooltip label={`Follow @${username}`} withArrow arrowPosition="center">
+                          <ActionIcon variant="default" size={36} onClick={followUser} mb={22}>
+                            <RiUserAddLine size="1.2rem" stroke={1.5} />
+                          </ActionIcon>
+                        </Tooltip>
+                      )}
+                    </>
+                  ) : null}
+                </Group>
+                <Space h="xs" />
+
+                <Box w={255}>
+                  <Text fw={500} truncate="end">
+                    {post.ProfileEntryResponse?.ExtraData?.DisplayName || username}
+                  </Text>
+                </Box>
+                <Text size="xs" truncate="end">
+                  @{username}
+                </Text>
+
+                <Space h="xl" />
+
+                <Text
+                  fz="sm"
+                  style={{
+                    maxWidth: '100%',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'wrap',
+                  }}
+                  dangerouslySetInnerHTML={{
+                    __html: post?.ProfileEntryResponse?.Description
+                      ? replaceURLs(post.ProfileEntryResponse?.Description).replace(/\n/g, '<br>')
+                      : '',
+                  }}
+                />
+                <Space h="sm" />
+                <Group grow>
+                  <SubscriptionModal
+                    publickey={post.PosterPublicKeyBase58Check}
+                    username={username}
+                  />
+                </Group>
+              </HoverCard.Dropdown>
+            </HoverCard>
+          </Group>
+          <Space h="xl" />
+
+          {post?.Body && (
+            <>
               <Text
-                fz="sm"
+                ta="center"
+                size="md"
                 style={{
                   maxWidth: '100%',
                   overflow: 'hidden',
                   textOverflow: 'ellipsis',
-                  whiteSpace: 'wrap',
+                  whiteSpace: 'normal',
+                  wordWrap: 'break-word',
                 }}
                 dangerouslySetInnerHTML={{
-                  __html: post?.ProfileEntryResponse?.Description
-                    ? replaceURLs(post.ProfileEntryResponse?.Description).replace(/\n/g, '<br>')
-                    : '',
+                  __html: post?.Body ? replaceURLs(post.Body).replace(/\n/g, '<br>') : '',
                 }}
               />
-              <Space h="sm" />
-              <Group grow>
-                <SubscriptionModal
-                  publickey={post.PosterPublicKeyBase58Check}
-                  username={username}
+
+              <Space h="md" />
+            </>
+          )}
+
+          {post.PostExtraData?.EmbedVideoURL && (
+            <>
+              <Group justify="center">
+                <iframe
+                  title="extraembed-video"
+                  id="embed-iframe"
+                  className="w-full flex-shrink-0 feed-post__image"
+                  height={getEmbedHeight(post.PostExtraData?.EmbedVideoURL)}
+                  style={{ maxWidth: getEmbedWidth(post.PostExtraData?.EmbedVideoURL) }}
+                  src={post.PostExtraData?.EmbedVideoURL}
+                  frameBorder="0"
+                  allow="picture-in-picture; clipboard-write; encrypted-media; gyroscope; accelerometer; encrypted-media;"
+                  allowFullScreen
+                  controls
                 />
               </Group>
-            </HoverCard.Dropdown>
-          </HoverCard>
-        </Group>
-        <Space h="xl" />
 
-        {post?.Body && (
-          <>
-            <Text
-              ta="center"
-              size="md"
-              style={{
-                maxWidth: '100%',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'normal',
-                wordWrap: 'break-word',
-              }}
-              dangerouslySetInnerHTML={{
-                __html: post?.Body ? replaceURLs(post.Body).replace(/\n/g, '<br>') : '',
-              }}
-            />
+              <Space h="xs" />
+            </>
+          )}
 
-            <Space h="md" />
-          </>
-        )}
-
-        {post.PostExtraData?.EmbedVideoURL && (
-          <>
-            <Group justify="center">
-              <iframe
-                title="extraembed-video"
-                id="embed-iframe"
-                className="w-full flex-shrink-0 feed-post__image"
-                height={getEmbedHeight(post.PostExtraData?.EmbedVideoURL)}
-                style={{ maxWidth: getEmbedWidth(post.PostExtraData?.EmbedVideoURL) }}
-                src={post.PostExtraData?.EmbedVideoURL}
-                frameBorder="0"
-                allow="picture-in-picture; clipboard-write; encrypted-media; gyroscope; accelerometer; encrypted-media;"
-                allowFullScreen
-                controls
-              />
-            </Group>
-
-            <Space h="xs" />
-          </>
-        )}
-
-        {isWavesStream ? (
-          <Player
-            controls
-            showPipButton
-            theme={{
-              colors: {
-                loading: '#3cdfff',
-              },
-            }}
-            playbackId={extractPlaybackId(post.VideoURLs[0])}
-            title={post.PostExtraData?.WavesStreamTitle || `Video by ${username}`}
-          />
-        ) : (
-          post.VideoURLs &&
-          post.VideoURLs[0] && (
+          {isWavesStream ? (
             <Player
-              style={{ width: '100%', height: '100%' }}
-              src={post.VideoURLs[0]}
-              title={`Video by ${username}`}
               controls
               showPipButton
               theme={{
@@ -1173,199 +1355,217 @@ export default function Post({ post, username, key }) {
                   loading: '#3cdfff',
                 },
               }}
+              playbackId={extractPlaybackId(post.VideoURLs[0])}
+              title={post.PostExtraData?.WavesStreamTitle || `Video by ${username}`}
             />
-          )
-        )}
-
-        {post.ImageURLs && post.ImageURLs[0] && (
-          <>
-            <Group justify="center">
-              <UnstyledButton
-                onClick={() => {
-                  setSelectedImage(post.ImageURLs[0]);
-                  openImage();
+          ) : (
+            post.VideoURLs &&
+            post.VideoURLs[0] && (
+              <Player
+                style={{ width: '100%', height: '100%' }}
+                src={post.VideoURLs[0]}
+                title={`Video by ${username}`}
+                controls
+                showPipButton
+                theme={{
+                  colors: {
+                    loading: '#3cdfff',
+                  },
                 }}
-              >
-                <Image src={post.ImageURLs[0]} radius="md" alt="post-image" fit="contain" />
-              </UnstyledButton>
-            </Group>
-            <Space h="xs" />
-          </>
-        )}
+              />
+            )
+          )}
 
-        {post.PostExtraData?.PollOptions && (
-          <>
-            <Group p="xs" justify="space-between">
-              <Tooltip label={`Weight Type: ${post.PostExtraData?.PollWeightType}`}>
-                <ActionIcon variant="default" size="xs" radius="xl">
-                  <BsInfoCircleFill />
+          {post.ImageURLs && post.ImageURLs[0] && (
+            <>
+              <Group justify="center">
+                <UnstyledButton
+                  onClick={() => {
+                    setSelectedImage(post.ImageURLs[0]);
+                    openImage();
+                  }}
+                >
+                  <Image src={post.ImageURLs[0]} radius="md" alt="post-image" fit="contain" />
+                </UnstyledButton>
+              </Group>
+              <Space h="xs" />
+            </>
+          )}
+
+          {post.PostExtraData?.PollOptions && (
+            <>
+              <Group p="xs" justify="space-between">
+                <Tooltip label={`Weight Type: ${post.PostExtraData?.PollWeightType}`}>
+                  <ActionIcon variant="default" size="xs" radius="xl">
+                    <BsInfoCircleFill />
+                  </ActionIcon>
+                </Tooltip>
+                {voteCount && (
+                  <>
+                    <Group ml={11}>
+                      <Text size="sm" c="dimmed">
+                        Total Votes: {voteCount.Total}{' '}
+                      </Text>
+                    </Group>
+                  </>
+                )}
+              </Group>
+
+              <Space h="xs" />
+
+              {pollOptions.map((option, index) => (
+                <>
+                  <Group grow>
+                    <Button
+                      justify="space-between"
+                      fullWidth
+                      leftSection={<span />}
+                      rightSection={
+                        voteCount ? (
+                          <>
+                            <Group ml={11}>
+                              <Text size="sm">{calculatePercentage(option)}%</Text>
+                            </Group>
+                          </>
+                        ) : (
+                          <span />
+                        )
+                      }
+                      disabled={didVote}
+                      onClick={() => {
+                        submitVote(option);
+                      }}
+                      variant="light"
+                      radius="xl"
+                      key={index}
+                    >
+                      {option}
+                    </Button>
+                  </Group>
+
+                  <Space h="xs" />
+                </>
+              ))}
+            </>
+          )}
+
+          {post.RepostedPostEntryResponse && (
+            <Post
+              post={post.RepostedPostEntryResponse}
+              username={post.RepostedPostEntryResponse.ProfileEntryResponse.Username}
+            />
+          )}
+
+          <Space h="md" />
+
+          <Center>
+            {isHearted || didHeartId ? (
+              <Tooltip transition="slide-down" withArrow position="bottom" label="Unlike">
+                <ActionIcon
+                  onClick={() => deleteHeart()}
+                  variant="subtle"
+                  radius="md"
+                  size={36}
+                  ref={ref}
+                >
+                  {hovered ? <IconHeartBroken size={18} /> : <IconHeartFilled size={18} />}
                 </ActionIcon>
               </Tooltip>
-              {voteCount && (
-                <>
-                  <Group ml={11}>
-                    <Text size="sm" c="dimmed">
-                      Total Votes: {voteCount.Total}{' '}
-                    </Text>
-                  </Group>
-                </>
-              )}
-            </Group>
+            ) : (
+              <Tooltip transition="slide-down" withArrow position="bottom" label="Like">
+                <ActionIcon onClick={() => submitHeart()} variant="subtle" radius="md" size={36}>
+                  <IconHeart size={18} />
+                </ActionIcon>
+              </Tooltip>
+            )}
 
-            <Space h="xs" />
+            <Text size="xs" c="dimmed">
+              {heartCount}
+            </Text>
 
-            {pollOptions.map((option, index) => (
-              <>
-                <Group grow>
-                  <Button
-                    justify="space-between"
-                    fullWidth
-                    leftSection={<span />}
-                    rightSection={
-                      voteCount ? (
-                        <>
-                          <Group ml={11}>
-                            <Text size="sm">{calculatePercentage(option)}%</Text>
-                          </Group>
-                        </>
-                      ) : (
-                        <span />
-                      )
-                    }
-                    disabled={didVote}
-                    onClick={() => {
-                      submitVote(option);
-                    }}
-                    variant="light"
-                    radius="xl"
-                    key={index}
-                  >
-                    {option}
-                  </Button>
-                </Group>
+            <Space w="sm" />
 
-                <Space h="xs" />
-              </>
-            ))}
-          </>
-        )}
+            <Menu offset={2} shadow="md" width={111} withArrow>
+              <Menu.Target>
+                <Tooltip transition="slide-down" withArrow position="bottom" label="Repost">
+                  <ActionIcon variant="subtle" radius="md" size={36}>
+                    <IconRecycle size={18} />
+                  </ActionIcon>
+                </Tooltip>
+              </Menu.Target>
 
-        {post.RepostedPostEntryResponse && (
-          <Post
-            post={post.RepostedPostEntryResponse}
-            username={post.RepostedPostEntryResponse.ProfileEntryResponse.Username}
-          />
-        )}
+              <Menu.Dropdown>
+                <Menu.Item
+                  onClick={() => submitRepost()}
+                  leftSection={<IconRecycle style={{ width: rem(16), height: rem(16) }} />}
+                >
+                  Repost
+                </Menu.Item>
 
-        <Space h="md" />
+                <Menu.Item
+                  onClick={() => openQuote()}
+                  leftSection={<BsChatQuoteFill style={{ width: rem(16), height: rem(16) }} />}
+                >
+                  Quote
+                </Menu.Item>
+              </Menu.Dropdown>
+            </Menu>
 
-        <Center>
-          {isHearted || didHeartId ? (
-            <Tooltip transition="slide-down" withArrow position="bottom" label="Unlike">
+            <Text size="xs" c="dimmed">
+              {repostCount}
+            </Text>
+
+            <Space w="sm" />
+
+            <Tooltip transition="slide-down" withArrow position="bottom" label="Diamonds">
               <ActionIcon
-                onClick={() => deleteHeart()}
+                onClick={() => {
+                  openDiamond();
+                  getDiamondUSD();
+                }}
                 variant="subtle"
                 radius="md"
                 size={36}
-                ref={ref}
               >
-                {hovered ? <IconHeartBroken size={18} /> : <IconHeartFilled size={18} />}
+                <IconDiamond size={18} />
               </ActionIcon>
             </Tooltip>
-          ) : (
-            <Tooltip transition="slide-down" withArrow position="bottom" label="Like">
-              <ActionIcon onClick={() => submitHeart()} variant="subtle" radius="md" size={36}>
-                <IconHeart size={18} />
+            <Text size="xs" c="dimmed">
+              {diamondCount}
+            </Text>
+
+            <Space w="sm" />
+
+            <Tooltip transition="slide-down" withArrow position="bottom" label="Comments">
+              <ActionIcon onClick={toggle} variant="subtle" radius="md" size={36}>
+                <IconMessageCircle size={18} />
               </ActionIcon>
             </Tooltip>
-          )}
-
-          <Text size="xs" c="dimmed">
-            {heartCount}
-          </Text>
-
-          <Space w="sm" />
-
-          <Menu offset={2} shadow="md" width={111} withArrow>
-            <Menu.Target>
-              <Tooltip transition="slide-down" withArrow position="bottom" label="Repost">
-                <ActionIcon variant="subtle" radius="md" size={36}>
-                  <IconRecycle size={18} />
-                </ActionIcon>
-              </Tooltip>
-            </Menu.Target>
-
-            <Menu.Dropdown>
-              <Menu.Item
-                onClick={() => submitRepost()}
-                leftSection={<IconRecycle style={{ width: rem(16), height: rem(16) }} />}
-              >
-                Repost
-              </Menu.Item>
-
-              <Menu.Item
-                onClick={() => openQuote()}
-                leftSection={<BsChatQuoteFill style={{ width: rem(16), height: rem(16) }} />}
-              >
-                Quote
-              </Menu.Item>
-            </Menu.Dropdown>
-          </Menu>
-
-          <Text size="xs" c="dimmed">
-            {repostCount}
-          </Text>
-
-          <Space w="sm" />
-
-          <Tooltip transition="slide-down" withArrow position="bottom" label="Diamonds">
-            <ActionIcon
-              onClick={() => {
-                openDiamond();
-                getDiamondUSD();
-              }}
-              variant="subtle"
-              radius="md"
-              size={36}
-            >
-              <IconDiamond size={18} />
-            </ActionIcon>
-          </Tooltip>
-          <Text size="xs" c="dimmed">
-            {diamondCount}
-          </Text>
-
-          <Space w="sm" />
-
-          <Tooltip transition="slide-down" withArrow position="bottom" label="Comments">
-            <ActionIcon onClick={toggle} variant="subtle" radius="md" size={36}>
-              <IconMessageCircle size={18} />
-            </ActionIcon>
-          </Tooltip>
-          <Text size="xs" c="dimmed">
-            {commentCount}
-          </Text>
-        </Center>
-        <Collapse in={opened}>
-          <>
-            <Space h="md" />
-            <Textarea
-              placeholder="Enter your comment..."
-              variant="filled"
-              autosize
-              value={comment}
-              onChange={(event) => setComment(event.target.value)}
-            />
-            <Space h="sm" />
-            <Group justify="right">
-              <Button mr={5} radius="md" onClick={() => submitComment()}>
-                Comment
-              </Button>
-            </Group>
-          </>
-        </Collapse>
-        <Space h="sm" />
-      </Paper>
+            <Text size="xs" c="dimmed">
+              {commentCount}
+            </Text>
+          </Center>
+          <Collapse in={opened}>
+            <>
+              <Space h="md" />
+              <Textarea
+                placeholder="Enter your comment..."
+                variant="filled"
+                autosize
+                value={comment}
+                onChange={(event) => setComment(event.target.value)}
+              />
+              <Space h="sm" />
+              <Group justify="right">
+                <Button mr={5} radius="md" onClick={() => submitComment()}>
+                  Comment
+                </Button>
+              </Group>
+            </>
+          </Collapse>
+          <Space h="sm" />
+        </Paper>
+      )}
     </>
   );
 }

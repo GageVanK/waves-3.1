@@ -146,7 +146,7 @@ export default function Wave() {
       setIsLoadingPosts(true);
       const postData = await getPostsForUser({
         Username: profile?.Username,
-        NumToFetch: 100,
+        NumToFetch: 25,
       });
       setPosts(postData.Posts);
       setIsLoadingPosts(false);

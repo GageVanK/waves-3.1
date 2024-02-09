@@ -19,7 +19,7 @@ import {
   Loader,
   ThemeIcon,
   Badge,
-  rem,
+  Title,
 } from '@mantine/core';
 import { GiWaveCrest } from 'react-icons/gi';
 import { TbPinned, TbPinnedOff } from 'react-icons/tb';
@@ -170,9 +170,7 @@ export default function ProfilePage() {
         my="xs"
         label={
           <>
-            <Text fw={444} fz="xl">
-              Profile
-            </Text>
+            <Title order={3}>Dashboard</Title>
           </>
         }
         labelPosition="center"

@@ -25,28 +25,56 @@ export const FollowerFeed = () => {
   const [followerFeed, setFollowerFeed] = useState([]);
   const userPublicKey = currentUser?.PublicKeyBase58Check;
   const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [checked, setChecked] = useState(false);
+  const [lastSeenPostHash, setLastSeenPostHash] = useState();
+
+  const fetchFollowerFeed = async () => {
+    try {
+      setIsLoading(true);
+
+      const followerFeedData = await getPostsStateless({
+        ReaderPublicKeyBase58Check: userPublicKey,
+        NumToFetch: 25,
+        GetPostsForFollowFeed: true,
+      });
+
+      setFollowerFeed(followerFeedData.PostsFound);
+      setLastSeenPostHash(
+        followerFeedData.PostsFound[followerFeedData.PostsFound.length - 1].PostHashHex
+      );
+      setIsLoading(false);
+    } catch (error) {
+      setIsLoading(false);
+      console.error('Error fetching user hotFeed:', error);
+    }
+  };
+
+  const fetchMoreFollowingFeed = async () => {
+    try {
+      setIsLoadingMore(true);
+      const morePostsData = await getPostsStateless({
+        ReaderPublicKeyBase58Check: userPublicKey,
+        NumToFetch: 25,
+        GetPostsForFollowFeed: true,
+        PostHashHex: lastSeenPostHash,
+      });
+      if (morePostsData.PostsFound.length > 0) {
+        setFollowerFeed((prevPosts) => [...prevPosts, ...morePostsData.PostsFound]);
+        setLastSeenPostHash(
+          morePostsData.PostsFound[morePostsData.PostsFound.length - 1].PostHashHex
+        );
+        setIsLoadingMore(false);
+      } else {
+        setIsLoadingMore(false);
+      }
+    } catch (error) {
+      console.error('Error fetching more hotFeed:', error);
+      setIsLoadingMore(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchFollowerFeed = async () => {
-      try {
-        setIsLoading(true);
-
-        const followerFeedData = await getPostsStateless({
-          ReaderPublicKeyBase58Check: userPublicKey,
-          NumToFetch: 100,
-          GetPostsForFollowFeed: true,
-          FetchSubcomments: true,
-        });
-
-        setFollowerFeed(followerFeedData.PostsFound);
-        setIsLoading(false);
-      } catch (error) {
-        setIsLoading(false);
-        console.error('Error fetching user hotFeed:', error);
-      }
-    };
-
     if (currentUser) {
       fetchFollowerFeed();
     }
@@ -78,13 +106,29 @@ export const FollowerFeed = () => {
             ) : (
               <>
                 {followerFeed && followerFeed.length > 0 ? (
-                  followerFeed.map((post) => (
-                    <Post
-                      post={post}
-                      username={post.ProfileEntryResponse?.Username}
-                      key={post.PostHashHex}
-                    />
-                  ))
+                  <>
+                    {followerFeed.map((post) => (
+                      <Post
+                        post={post}
+                        username={post.ProfileEntryResponse?.Username}
+                        key={post.PostHashHex}
+                      />
+                    ))}
+                    {isLoadingMore ? (
+                      <>
+                        <Space h="md" />
+                        <Group justify="center">
+                          <Loader />
+                        </Group>
+                      </>
+                    ) : (
+                      <Center>
+                        <Button onClick={fetchMoreFollowingFeed}>Load More</Button>
+                      </Center>
+                    )}
+
+                    <Space h={222} />
+                  </>
                 ) : (
                   <>
                     {isLoading ? (

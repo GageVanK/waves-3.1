@@ -44,7 +44,6 @@ export default function CloseFriendsList() {
     const request = {
       UsernamePrefix: value,
       NumToFetch: 10,
-      OrderBy: 'newest_last_post',
     };
 
     const response = await getProfiles(request);
