@@ -167,7 +167,6 @@ export const SignAndSubmitTx = ({ close }) => {
 
   const deleteExtraCreator = (publicKey) => {
     setExtraCreatorRoyalties((prevState) => {
-  
       const newOptions = { ...prevState };
       delete newOptions[publicKey];
       return newOptions;
@@ -356,7 +355,9 @@ export const SignAndSubmitTx = ({ close }) => {
           Body: bodyText,
           ImageURLs: imageURL ? [imageURL] : [],
           VideoURLs:
-            asset && asset[0]?.playbackId ? [`https://lvpr.tv/?v=${asset[0].playbackId}`] : [],
+            video && asset && asset[0]?.playbackId
+              ? [`https://lvpr.tv/?v=${asset[0].playbackId}`]
+              : [],
         },
         PostExtraData: {
           EmbedVideoURL: embedUrl || '',
