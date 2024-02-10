@@ -93,7 +93,7 @@ export default function Wave() {
         Username: userName,
         NoErrorOnMissing: true,
       });
-      console.log(profileData);
+
       if (profileData !== null) {
         setProfile(profileData.Profile);
       }

@@ -44,7 +44,7 @@ export function NftModal({ postHash }) {
         PublicKeyBase58Check: 'BC1YLjYHZfYDqaFxLnfbnfVY48wToduQVHJopCx4Byfk4ovvwT6TboD',
       });
       const desoUSDValue = appState.USDCentsPerDeSoCoinbase / 100;
-      console.log(appState);
+
       setDesoUSD(desoUSDValue);
     } catch (error) {
       console.error('Error in getData:', error);
@@ -98,7 +98,7 @@ export function NftModal({ postHash }) {
   const handleAddCreator = (publicKey) => {
     // Add selected creator with default percentage
     setExtraCreatorRoyalties((prevState) => {
-      console.log('Adding creator:', publicKey, 'with default percentage 0');
+     
       return {
         ...prevState,
         [publicKey]: convertToBasisPoints(0), // Convert default percentage to basis points
@@ -110,20 +110,20 @@ export function NftModal({ postHash }) {
   };
 
   const handleCreatorPercentageChange = (publicKey, updatedPercentage) => {
-    console.log(`Updating percentage for creator ${publicKey} to ${updatedPercentage}`);
+  
     setExtraCreatorRoyalties((prevState) => {
       const updatedMap = {
         ...prevState,
         [publicKey]: convertToBasisPoints(updatedPercentage), // Convert updated percentage to basis points
       };
-      console.log('Updated map:', updatedMap);
+ 
       return updatedMap;
     });
   };
 
   const deleteExtraCreator = (publicKey) => {
     setExtraCreatorRoyalties((prevState) => {
-      console.log('Deleting creator:', publicKey);
+  
       const newOptions = { ...prevState };
       delete newOptions[publicKey];
       return newOptions;

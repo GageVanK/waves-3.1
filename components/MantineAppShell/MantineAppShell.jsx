@@ -33,7 +33,7 @@ export function MantineAppShell({ children }) {
         Username: userName,
         NoErrorOnMissing: true,
       });
-      console.log(profileData);
+     
       if (profileData !== null) {
         setProfile(profileData.Profile);
       }

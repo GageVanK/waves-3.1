@@ -344,7 +344,7 @@ export default function Post({ post, username, key }) {
           ImageURLs: [],
         },
       });
-      console.log('response', response);
+   
       notifications.show({
         title: 'Success',
         icon: <IconCheck size="1.1rem" />,
