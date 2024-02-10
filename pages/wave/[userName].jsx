@@ -257,7 +257,9 @@ export default function Wave() {
         NumToFetch: 20,
       });
 
-      const livestreamPost = postData.Posts.find((post) => post.PostExtraData?.WavesStreamTitle);
+      const livestreamPost = postData.Posts.find(
+        (post) => post.PostExtraData?.WavesStreamTitle && livestreamPost?.VideoURLs[0]
+      );
 
       setLivestreamPost(livestreamPost);
 
@@ -362,7 +364,7 @@ export default function Wave() {
                         loading: '#3cdfff',
                       },
                     }}
-                    playbackId={extractPlaybackId(livestreamPost.VideoURLs[0])}
+                    playbackId={extractPlaybackId(livestreamPost?.VideoURLs[0])}
                     title={livestreamPost.ExtraData?.WavesStreamTitle}
                   />
                 </>
