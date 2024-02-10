@@ -53,11 +53,12 @@ export default function ProfilePage() {
   const [NFTs, setNFTs] = useState([]);
   const [bookmarks, setBookmarks] = useState([]);
   const [followerInfo, setFollowers] = useState({ followers: 0, following: 0 });
-  const userPublicKey = currentUser?.PublicKeyBase58Check;
   const [isLoadingPosts, setIsLoadingPosts] = useState(false);
   const [isLoadingNFTs, setIsLoadingNFTs] = useState(false);
   const [openedChat, { toggle }] = useDisclosure(true);
   const [pinnedPost, setPinnedPost] = useState();
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [lastSeenPostHash, setLastSeenPostHash] = useState();
   const embed = useRef();
 
   const handleReady = (e) => {
@@ -67,10 +68,10 @@ export default function ProfilePage() {
   const getFollowers = async () => {
     try {
       const following = await getFollowersForUser({
-        PublicKeyBase58Check: userPublicKey,
+        PublicKeyBase58Check: currentUser?.PublicKeyBase58Check,
       });
       const followers = await getFollowersForUser({
-        PublicKeyBase58Check: userPublicKey,
+        PublicKeyBase58Check: currentUser?.PublicKeyBase58Check,
         GetEntriesFollowingUsername: true,
       });
 
@@ -85,15 +86,37 @@ export default function ProfilePage() {
     try {
       setIsLoadingPosts(true);
       const postData = await getPostsForUser({
-        PublicKeyBase58Check: userPublicKey,
+        PublicKeyBase58Check: currentUser?.PublicKeyBase58Check,
         NumToFetch: 25,
       });
 
       setPosts(postData.Posts);
+      setLastSeenPostHash(postData.Posts[postData.Posts.length - 1].PostHashHex);
       setIsLoadingPosts(false);
     } catch (error) {
       console.error('Error fetching user profile posts:', error);
       setIsLoadingPosts(false);
+    }
+  };
+
+  const fetchMorePosts = async () => {
+    try {
+      setIsLoadingMore(true);
+      const morePostsData = await getPostsForUser({
+        PublicKeyBase58Check: currentUser?.PublicKeyBase58Check,
+        NumToFetch: 25,
+        LastPostHashHex: lastSeenPostHash,
+      });
+      if (morePostsData.Posts.length > 0) {
+        setPosts((prevPosts) => [...prevPosts, ...morePostsData.Posts]);
+        setLastSeenPostHash(morePostsData.Posts[morePostsData.Posts.length - 1].PostHashHex);
+        setIsLoadingMore(false);
+      } else {
+        setIsLoadingMore(false);
+      }
+    } catch (error) {
+      console.error('Error fetching more hotFeed:', error);
+      setIsLoadingMore(false);
     }
   };
 
@@ -197,7 +220,7 @@ export default function ProfilePage() {
                   className={classes.avatar}
                   src={
                     currentUser.ProfileEntryResponse?.ExtraData?.LargeProfilePicURL ||
-                    `https://node.deso.org/api/v0/get-single-profile-picture/${userPublicKey}` ||
+                    `https://node.deso.org/api/v0/get-single-profile-picture/${currentUser?.PublicKeyBase58Check}` ||
                     null
                   }
                   alt="Profile Picture"
@@ -347,6 +370,7 @@ export default function ProfilePage() {
                   </Paper>
                 </>
               )}
+
               {isLoadingPosts ? (
                 <>
                   <Space h="md" />
@@ -355,13 +379,30 @@ export default function ProfilePage() {
                   </Center>
                 </>
               ) : posts && posts.length > 0 ? (
-                posts.map((post) => (
-                  <Post
-                    post={post}
-                    username={currentUser.ProfileEntryResponse?.Username}
-                    key={post.PostHashHex}
-                  />
-                ))
+                <>
+                  {posts.map((post) => (
+                    <Post
+                      post={post}
+                      username={currentUser.ProfileEntryResponse?.Username}
+                      key={post.PostHashHex}
+                    />
+                  ))}
+
+                  {isLoadingMore ? (
+                    <>
+                      <Space h="md" />
+                      <Group justify="center">
+                        <Loader />
+                      </Group>
+                    </>
+                  ) : (
+                    <Center>
+                      <Button onClick={fetchMorePosts}>Load More</Button>
+                    </Center>
+                  )}
+
+                  <Space h={222} />
+                </>
               ) : (
                 // If no NFTs, show the Badge
                 <>

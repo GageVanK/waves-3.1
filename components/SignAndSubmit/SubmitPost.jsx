@@ -890,7 +890,7 @@ export const SignAndSubmitTx = ({ close }) => {
           size="sm"
           label={
             <Text fw={500} size="xs">
-              Mint as NFT
+              Mint
             </Text>
           }
           thumbIcon={
@@ -901,11 +901,7 @@ export const SignAndSubmitTx = ({ close }) => {
                 stroke={3}
               />
             ) : (
-              <IconX
-                style={{ width: rem(12), height: rem(12) }}
-                color={theme.colors.red[6]}
-                stroke={3}
-              />
+              <></>
             )
           }
         />
