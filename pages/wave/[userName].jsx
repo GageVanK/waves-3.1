@@ -71,12 +71,15 @@ export default function Wave() {
   const [livestreamPost, setLivestreamPost] = useState(null);
   const [isLoadingLivestream, setIsLoadingLivestream] = useState(false);
   const [pinnedPost, setPinnedPost] = useState();
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [lastSeenPostHash, setLastSeenPostHash] = useState();
 
   const embed = useRef();
 
   const handleReady = (e) => {
     embed.current = e;
   };
+
   const extractPlaybackId = (url) => {
     const match = url.match(/https:\/\/lvpr\.tv\/\?v=(.*)/);
     const playbackId = match ? match[1] : null;
@@ -90,7 +93,7 @@ export default function Wave() {
         Username: userName,
         NoErrorOnMissing: true,
       });
-      console.log(profileData);
+
       if (profileData !== null) {
         setProfile(profileData.Profile);
       }
@@ -149,9 +152,31 @@ export default function Wave() {
         NumToFetch: 25,
       });
       setPosts(postData.Posts);
+      setLastSeenPostHash(postData.Posts[postData.Posts.length - 1].PostHashHex);
       setIsLoadingPosts(false);
     } catch (error) {
       console.error('Error fetching user posts:', error);
+    }
+  };
+
+  const fetchMorePosts = async () => {
+    try {
+      setIsLoadingMore(true);
+      const morePostsData = await getPostsForUser({
+        Username: profile?.Username,
+        NumToFetch: 25,
+        LastPostHashHex: lastSeenPostHash,
+      });
+      if (morePostsData.Posts.length > 0) {
+        setPosts((prevPosts) => [...prevPosts, ...morePostsData.Posts]);
+        setLastSeenPostHash(morePostsData.Posts[morePostsData.Posts.length - 1].PostHashHex);
+        setIsLoadingMore(false);
+      } else {
+        setIsLoadingMore(false);
+      }
+    } catch (error) {
+      console.error('Error fetching more hotFeed:', error);
+      setIsLoadingMore(false);
     }
   };
 
@@ -232,7 +257,9 @@ export default function Wave() {
         NumToFetch: 20,
       });
 
-      const livestreamPost = postData.Posts.find((post) => post.PostExtraData?.WavesStreamTitle);
+      const livestreamPost = postData.Posts.find(
+        (post) => post.PostExtraData?.WavesStreamTitle && livestreamPost?.VideoURLs[0]
+      );
 
       setLivestreamPost(livestreamPost);
 
@@ -337,7 +364,7 @@ export default function Wave() {
                         loading: '#3cdfff',
                       },
                     }}
-                    playbackId={extractPlaybackId(livestreamPost.VideoURLs[0])}
+                    playbackId={extractPlaybackId(livestreamPost?.VideoURLs[0])}
                     title={livestreamPost.ExtraData?.WavesStreamTitle}
                   />
                 </>
@@ -530,9 +557,26 @@ export default function Wave() {
                   </Center>
                 </>
               ) : posts && posts.length > 0 ? (
-                posts.map((post) => (
-                  <Post post={post} username={profile?.Username} key={post.PostHashHex} />
-                ))
+                <>
+                  {posts.map((post) => (
+                    <Post post={post} username={profile?.Username} key={post.PostHashHex} />
+                  ))}
+
+                  {isLoadingMore ? (
+                    <>
+                      <Space h="md" />
+                      <Group justify="center">
+                        <Loader />
+                      </Group>
+                    </>
+                  ) : (
+                    <Center>
+                      <Button onClick={fetchMorePosts}>Load More</Button>
+                    </Center>
+                  )}
+
+                  <Space h={222} />
+                </>
               ) : (
                 // If no NFTs, show the Badge
                 <>

@@ -344,7 +344,7 @@ export default function Post({ post, username, key }) {
           ImageURLs: [],
         },
       });
-      console.log('response', response);
+   
       notifications.show({
         title: 'Success',
         icon: <IconCheck size="1.1rem" />,
@@ -891,7 +891,7 @@ export default function Post({ post, username, key }) {
 
   return (
     <>
-      <Modal opened={openedImage} onClose={closeImage} centered zIndex={9999999999999}>
+      <Modal opened={openedImage} onClose={closeImage} zIndex={9999999999999} fullScreen>
         <Image src={selectedImage} radius="md" alt="post-image" fit="contain" />
       </Modal>
 
@@ -952,17 +952,19 @@ export default function Post({ post, username, key }) {
             size="lg"
             style={{ flexGrow: 1, width: 'auto' }}
           />
-          {editedPost ? (
-            <Post post={editedPost} username={username} />
-          ) : (
-            <Post post={post} username={username} />
-          )}
-
+          <Space h="md" />
           <Group justify="right">
             <Button disabled={editBody === post.Body} onClick={editPost}>
               Edit
             </Button>
           </Group>
+          <Space h="md" />
+
+          {editedPost ? (
+            <Post post={editedPost} username={username} />
+          ) : (
+            <Post post={post} username={username} />
+          )}
         </>
       </Modal>
 
@@ -1057,14 +1059,9 @@ export default function Post({ post, username, key }) {
 
         <Post post={post} username={username} />
       </Modal>
+
       {post.IsHidden ? (
-        <Paper m="md" shadow="lg" radius="md" p={3} withBorder>
-          <Space h="lg" />
-          <Text ta="center" size="sm" fw={500}>
-            Post Hidden By Author.
-          </Text>
-          <Space h="lg" />
-        </Paper>
+        <></>
       ) : (
         <Paper m="md" shadow="lg" radius="md" p={3} withBorder key={key}>
           <Space h="xs" />
@@ -1077,7 +1074,7 @@ export default function Post({ post, username, key }) {
           >
             <Group ml={7} justify="left">
               <Text c="dimmed" size="xs" fw={500}>
-                {formatDate(post.TimestampNanos)} ago
+                {formatDate(post?.TimestampNanos)} ago
               </Text>
             </Group>
 
@@ -1095,7 +1092,7 @@ export default function Post({ post, username, key }) {
                     component={Link}
                     href={`/post/${post.PostHashHex}`}
                   >
-                    Visit Post
+                    {post.IsNFT ? 'View NFT' : 'View Post'}
                   </Menu.Item>
 
                   {!post.IsNFT &&
@@ -1168,14 +1165,14 @@ export default function Post({ post, username, key }) {
                         onClick={() => handleUnpinPost()}
                         leftSection={<TbPinnedOff style={{ width: rem(16), height: rem(16) }} />}
                       >
-                        Unpin Post
+                        {post.IsNFT ? 'Pin NFT' : 'Pin Post'}
                       </Menu.Item>
                     ) : (
                       <Menu.Item
                         onClick={() => handlePinPost(post.PostHashHex)}
                         leftSection={<TbPinned style={{ width: rem(16), height: rem(16) }} />}
                       >
-                        Pin Post
+                        {post.IsNFT ? 'Pin NFT' : 'Pin Post'}
                       </Menu.Item>
                     ))}
 

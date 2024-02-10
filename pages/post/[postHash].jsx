@@ -37,14 +37,14 @@ export default function PostPage() {
         });
 
         setSinglePost(postData.PostFound);
-        console.log(postData);
+ 
         // Fetch top-level comments
         setTopLevelComments(postData.PostFound.Comments);
-        console.log(topLevelComments);
+   
         // Fetch nested comments recursively
         const updatedTopLevelComments = await fetchCommentsRecursively(postData.PostFound.Comments);
         setTopLevelComments(updatedTopLevelComments);
-        console.log(updatedTopLevelComments);
+    
       } catch (error) {
         console.error('Error fetching post:', error);
       }

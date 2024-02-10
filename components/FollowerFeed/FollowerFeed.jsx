@@ -25,8 +25,8 @@ export const FollowerFeed = () => {
   const [followerFeed, setFollowerFeed] = useState([]);
   const userPublicKey = currentUser?.PublicKeyBase58Check;
   const [isLoading, setIsLoading] = useState(false);
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [checked, setChecked] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [lastSeenPostHash, setLastSeenPostHash] = useState();
 
   const fetchFollowerFeed = async () => {

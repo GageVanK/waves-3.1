@@ -93,7 +93,7 @@ export const SignAndSubmitTx = ({ close }) => {
         PublicKeyBase58Check: 'BC1YLjYHZfYDqaFxLnfbnfVY48wToduQVHJopCx4Byfk4ovvwT6TboD',
       });
       const desoUSDValue = appState.USDCentsPerDeSoCoinbase / 100;
-      console.log(appState);
+
       setDesoUSD(desoUSDValue);
     } catch (error) {
       console.error('Error in getData:', error);
@@ -145,33 +145,28 @@ export const SignAndSubmitTx = ({ close }) => {
 
   const handleAddCreator = (publicKey) => {
     // Add selected creator with default percentage
-    setExtraCreatorRoyalties((prevState) => {
-      console.log('Adding creator:', publicKey, 'with default percentage 0');
-      return {
-        ...prevState,
-        [publicKey]: convertToBasisPoints(0), // Convert default percentage to basis points
-      };
-    });
+    setExtraCreatorRoyalties((prevState) => ({
+      ...prevState,
+      [publicKey]: convertToBasisPoints(0), // Convert default percentage to basis points
+    }));
     // Clear search results and value
     setSearchResults([]);
     setValue('');
   };
 
   const handleCreatorPercentageChange = (publicKey, updatedPercentage) => {
-    console.log(`Updating percentage for creator ${publicKey} to ${updatedPercentage}`);
     setExtraCreatorRoyalties((prevState) => {
       const updatedMap = {
         ...prevState,
         [publicKey]: convertToBasisPoints(updatedPercentage), // Convert updated percentage to basis points
       };
-      console.log('Updated map:', updatedMap);
+
       return updatedMap;
     });
   };
 
   const deleteExtraCreator = (publicKey) => {
     setExtraCreatorRoyalties((prevState) => {
-      console.log('Deleting creator:', publicKey);
       const newOptions = { ...prevState };
       delete newOptions[publicKey];
       return newOptions;
@@ -360,7 +355,9 @@ export const SignAndSubmitTx = ({ close }) => {
           Body: bodyText,
           ImageURLs: imageURL ? [imageURL] : [],
           VideoURLs:
-            asset && asset[0]?.playbackId ? [`https://lvpr.tv/?v=${asset[0].playbackId}`] : [],
+            video && asset && asset[0]?.playbackId
+              ? [`https://lvpr.tv/?v=${asset[0].playbackId}`]
+              : [],
         },
         PostExtraData: {
           EmbedVideoURL: embedUrl || '',
@@ -890,7 +887,7 @@ export const SignAndSubmitTx = ({ close }) => {
           size="sm"
           label={
             <Text fw={500} size="xs">
-              Mint as NFT
+              Mint
             </Text>
           }
           thumbIcon={
@@ -901,11 +898,7 @@ export const SignAndSubmitTx = ({ close }) => {
                 stroke={3}
               />
             ) : (
-              <IconX
-                style={{ width: rem(12), height: rem(12) }}
-                color={theme.colors.red[6]}
-                stroke={3}
-              />
+              <></>
             )
           }
         />

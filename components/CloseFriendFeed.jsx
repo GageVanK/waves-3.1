@@ -46,9 +46,6 @@ export default function CloseFriendFeed() {
                     // Add the associationId to the matching profile
                     matchingProfile.AssociationID = associationId;
 
-                    // Log the result
-                    console.log('Match found:', matchingProfile);
-
                     return { matchingProfile };
                   }
                 }
@@ -95,8 +92,7 @@ export default function CloseFriendFeed() {
       // Set the state with closeFriendsPosts
       setCloseFriendsFeed(closeFriendsPosts);
 
-      // You can use the closeFriendsFeed state as needed in your component
-      console.log('Close Friends Feed:', closeFriendsPosts);
+    
       setIsLoading(false);
     } catch (error) {
       console.error('Error fetching close friends feed:', error);

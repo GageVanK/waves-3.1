@@ -84,8 +84,7 @@ export default function CloseFriendsList() {
                     // Add the associationId to the matching profile
                     matchingProfile.AssociationID = associationId;
 
-                    // Log the result
-                    console.log('Match found:', matchingProfile);
+                 
 
                     return { matchingProfile };
                   }
@@ -99,8 +98,7 @@ export default function CloseFriendsList() {
             }).filter(Boolean) // Filter out null values
           : [];
 
-      // You can now use the matchedAssociations array as needed
-      console.log('Matched associations:', matchedAssociations);
+ 
       setCloseFriends(matchedAssociations);
     } catch (error) {
       console.error(error);
