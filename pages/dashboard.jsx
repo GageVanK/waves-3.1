@@ -137,7 +137,7 @@ export default function ProfilePage() {
     try {
       setIsLoadingNFTs(true);
       const nftData = await getNFTsForUser({
-        UserPublicKeyBase58Check: userPublicKey,
+        UserPublicKeyBase58Check: currentUser?.PublicKeyBase58Check,
       });
 
       setNFTs(nftData.NFTsMap);
